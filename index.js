@@ -1,86 +1,83 @@
+const wppconnect = require('@wppconnect-team/wppconnect');
 const fs = require('fs');
-
-const readline = require('readline').createInterface({
-        input: process.stdin,
-        output: process.stdout
-});
-
 const motorDelBot = require('./configuracion');
 
 // Logica de persistencia
 
 const ARCHIVO_ESTADOS = './estados.json';
 
+let estadoUsuarios = cargarEstados();
+
 //funcion para guardar datos en el disco
 function guardarEstados() {
-    const datosEnTexto = JSON.stringify(estadoUsuarios, null, 2);
-    fs.writeFileSync(ARCHIVO_ESTADOS, datosEnTexto);
+    fs.writeFileSync(ARCHIVO_ESTADOS, JSON.stringify(estadoUsuarios, null, 2));
 }   
 
 //funcion para cargar datos desde el disco al arrancar
 function cargarEstados() {
     if (fs.existsSync(ARCHIVO_ESTADOS)) {
-        const contenido = fs.readFileSync(ARCHIVO_ESTADOS);
-        return JSON.parse(contenido);
+        return JSON.parse(fs.readFileSync(ARCHIVO_ESTADOS, 'utf-8'));
     }
     return {}; //si el archivo no existe, retornamos un objeto vacío
 }
 
-let estadoUsuarios = cargarEstados();
+// Arranque de Whatsapp
 
+wppconnect.create({
+    session: 'sesion-cooperativa',
+    // Arrancamos codigo QR
+    catchQR: (base64Qrimg, asciiQR) => {
+        console.log(asciiQR);
+    },
+})
+.then((client) => start(client))
+.catch((error) => console.log(error));
 
-function iniciarChat(){
-    // Preguntemos quien es el que escribe
-    readline.question("¿Quién está enviando un mensaje? (Nombre): ", (nombreUsuario) => {
+function start(client) {
+    console.log("🤖 BOT INICIADO");
 
-        // si escribe 'salir', cerramos programa
-        if (nombreUsuario.toLowerCase() === 'salir') {
-            console.log("Simulador de Bot finalizado. ¡Hasta luego!");
-            process.exit();
+    client.onMessage((message) => {
+        // ignoramos grupos y mensajemos que mandamos nosotros
+        if (message.isGroupMsg || message.fromMe) return;
+
+        if (!message.body) return; // si el mensaje no tiene texto, lo ignoramos
+
+        const telefono = message.from;
+        const textoRecibido = message.body.trim();
+
+        // si es nuevo o no tiene estado, va a inicio
+        if (!estadoUsuarios[telefono]) {
+            estadoUsuarios[telefono] = "INICIO";
+            guardarEstados();
+            // Mandamos mensaje
+            return client.sendText(telefono, motorDelBot["INICIO"].mensaje);
         }
 
-        //ejecutamos logica de bot para ESE usuario
-        // Pero necesitamos que después de responder, vuelva a preguntar "¿Quién habla?"
-        ejecutarFlujoBot(nombreUsuario);
-    });
-}
+        const estadoActual = estadoUsuarios[telefono];
+        const menuActual = motorDelBot[estadoActual];
 
-function ejecutarFlujoBot(telefono) {
+        // Procesamos respuesta del socio como numero
+        const eleccion = parseInt(textoRecibido);
 
-    if (!estadoUsuarios[telefono]) {
-        estadoUsuarios[telefono] = "INICIO";
-        guardarEstados();
-    }
-
-    const estadoActual = estadoUsuarios[telefono];
-    const menuMenu = motorDelBot[estadoActual];
-
-    menuMenu.presentar();
-
-    readline.question(`[Chat con ${telefono}] Tu respuesta: `, (entrada) => {
-        const eleccion = parseInt(entrada);
-
-        if (menuMenu.esValida(eleccion)) {
-            const proximoEstado = menuMenu.conexiones[eleccion];
+        if (!isNaN(eleccion) && menuActual.esValida(eleccion)) {
+            const proximoEstado = menuActual.conexiones[eleccion];
 
             if (proximoEstado) {
+                //actualizamos estado del usuario
                 estadoUsuarios[telefono] = proximoEstado;
-                console.log(`>>> ${telefono} se movió a ${proximoEstado}`);
                 guardarEstados();
+
+                // buscamos el nuevo menu y mandamos
+                const nuevoMenu = motorDelBot[proximoEstado];
+                client.sendText(telefono, nuevoMenu.mensaje);
             }
         } else {
-            console.log("Opción no válida.");
+            // si la respuesta no es válida, mandamos mensaje de error
+            client.sendText(telefono, "No entendí esa opción. Recordá:\n\n" + menuActual.mensaje);
         }
-
-        // 4. ¡LA CLAVE! En lugar de repetir el flujo del usuario, 
-        // volvemos a la "centralita" para ver si escribe otro
-        console.log("\n--- Mensaje enviado. Volviendo a la central ---\n");
-        iniciarChat(); 
     });
 }
 
-// Arrancamos la centralita
-console.log("🤖 CENTRAL DE MENSAJES INICIADA (Escribe 'salir' para finalizar)");
 
-iniciarChat();
+
 
