@@ -1,6 +1,7 @@
 const wppconnect = require('@wppconnect-team/wppconnect'); // Traemos API WPPConnect
 const fs = require('fs'); // Traemos el modulo de Node para lee/escribir archivos (File System)
 const motorDelBot = require('./configuracion'); // Traemos nuestro mapa de menus y conexiones
+const dotenv = require('dotenv').config(); // Para cargar variables de entorno desde un .env
 
 // LOGICA DE PERSISTENCIA----------------------------------------------------------------------------------------
 
@@ -57,8 +58,16 @@ function start(client) {
         }
         
 
-        // Ignora grupos y si mandan foto/sticker sin texto, ignora para que no explote el .trim().
-        if (message.isGroupMsg || !message.body) return;
+        // 1. FILTRO DE SEGURIDAD (Ignora grupos, comunidades, estados y mensajes vacíos)
+    if (
+        message.isGroupMsg || 
+        message.from === 'status@broadcast' || 
+        message.type === 'newsletter' || // Para ignorar Canales de WhatsApp
+        !message.body ||
+        message.from.includes('@g.us') // Refuerzo para cualquier tipo de grupo/comunidad
+    ) {
+        return; 
+    }
 
 
         const textoRecibido = message.body.trim(); // Limpiamos espacios (ej: " 1 " -> "1").
@@ -100,7 +109,5 @@ function esHorarioLaboral() {
     const hora = ahora.getHours(); // Saca solo la hora (0 a 23).
     return hora >= 10 && hora < 17; // Devuelve true si está en el rango, false si no.
 }
-
-
 
 
