@@ -9,7 +9,7 @@ const menuBienvenida = new PasoMenu (
 const menuSocio = new PasoMenu (
     "MENU_SOCIO",
     "", // El mensaje lo armaremos dinámicamente en el index.js
-    [1, 2, 3]
+    [0, 1, 2, 3]
 )
 
 const menuMetodos = new PasoMenu (
