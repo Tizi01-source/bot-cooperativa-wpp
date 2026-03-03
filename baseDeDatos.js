@@ -26,7 +26,7 @@ async function obtenerDatosSocio(dniBuscado) {
                 dni : socio.get('DNI'),
                 telefono: socio.get('TELEFONO'),
                 estado: socio.get('ESTADO'),
-                deuda: socio.get('DEUDA'),
+                deuda: parseFloat(socio.get('DEUDA').toString().replace(',', '.')),
                 cuotas: socio.get('CUOTAS_PAGAS'),
             };
         }
@@ -37,4 +37,4 @@ async function obtenerDatosSocio(dniBuscado) {
     }
 }
 
-module.exports = { obtenerDatosSocio };
+module.exports = obtenerDatosSocio;

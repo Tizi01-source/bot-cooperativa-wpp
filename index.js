@@ -1,8 +1,8 @@
 const wppconnect = require('@wppconnect-team/wppconnect'); // Traemos API WPPConnect
 const fs = require('fs'); // Traemos el modulo de Node para lee/escribir archivos (File System)
-const motorDelBot = require('./configuracion'); // Traemos nuestro mapa de menus y conexiones
+const motor = require('./configuracion'); // Traemos nuestro mapa de menus y conexiones
 const dotenv = require('dotenv').config(); // Para cargar variables de entorno desde un .env
-const { obtenerDatosSocio } = require('./baseDeDatos'); // Traemos la función para consultar datos de socios en Google Sheets
+const obtenerDatosSocio = require('./baseDeDatos'); // Traemos la función para consultar datos de socios en Google Sheets
 
 // LOGICA DE PERSISTENCIA----------------------------------------------------------------------------------------
 
@@ -47,36 +47,34 @@ wppconnect.create({
 
 function start(client) {
     console.log("🤖 BOT INICIADO");
-
-
     
-    client.onMessage((message) => {
+    client.onMessage(async (message) => {
         const telefono = message.from;   // Identificamos quien escribe
 
         // Si escribo yo, se silencia el bot
         if (message.fromMe) {
-            estadoUsuarios[telefono] = "HUMANO"; // Lo marcamos Humano.
+            estadoUsuarios[telefono] = { paso: "HUMANO" }; // Lo marcamos Humano.
             guardarEstados();
             return; // El bot no hace nada mas.
         }
 
         // Si el usuario ya está marcado como "HUMANO":
-        if (estadoUsuarios[telefono] === "HUMANO") {
+        if (estadoUsuarios[telefono] && estadoUsuarios[telefono].paso === "HUMANO") {
             console.log(`[SILENCIO] ${telefono} está en modo HUMANO. No responde el bot.`);
             return; // CORTA ACÁ. El bot ignora el mensaje para no interrumpirte.
         }
         
 
         // 1. FILTRO DE SEGURIDAD (Ignora grupos, comunidades, estados y mensajes vacíos)
-    if (
-        message.isGroupMsg || 
-        message.from === 'status@broadcast' || 
-        message.type === 'newsletter' || // Para ignorar Canales de WhatsApp
-        !message.body ||
-        message.from.includes('@g.us') // Refuerzo para cualquier tipo de grupo/comunidad
-    ) {
+        if (
+            message.isGroupMsg || 
+            message.from === 'status@broadcast' || 
+            message.type === 'newsletter' || // Para ignorar Canales de WhatsApp
+            !message.body ||
+            message.from.includes('@g.us') // Refuerzo para cualquier tipo de grupo/comunidad
+        ) {
         return; 
-    }
+        }
 
 
         const textoRecibido = message.body.trim(); // Limpiamos espacios (ej: " 1 " -> "1").
@@ -84,31 +82,80 @@ function start(client) {
 
         // Si no lo conocemos (no está en el JSON):
         if (!estadoUsuarios[telefono]) {
-            estadoUsuarios[telefono] = "INICIO";
+            estadoUsuarios[telefono] = { paso: "BIENVENIDA" };
             guardarEstados();
-            return client.sendText(telefono, motorDelBot["INICIO"].mensaje); // Primer saludo.
+            return client.sendText(telefono, motor["BIENVENIDA"].mensaje); // Primer saludo.
         }
 
-        const estadoActual = estadoUsuarios[telefono]; // Ej: "VENTAS"
-        const menuActual = motorDelBot[estadoActual]; // Trae las opciones de ese menú.
+        let sesion = estadoUsuarios[telefono]; // Traemos la "sesión" o "estado" actual del usuario (lo que está haciendo)
+
+        // Logica de validacion DNI
+        if (sesion.paso === "BIENVENIDA") {
+            // Filtro DNI: Solo números, entre 7 y 8 dígitos.
+            const dniLimpio = textoRecibido.replace(/\D/g, ''); // Elimina todo lo que no sea número.
+
+            if (dniLimpio.length < 7 || dniLimpio.length > 8) {
+                return client.sendText(telefono, "⚠️ El DNI ingresado no parece válido. Por favor, escribí solo los números:");
+            }
+
+            const socio = await obtenerDatosSocio(dniLimpio); // Consultamos en la base de datos.
+
+            if (socio) {
+                sesion.paso = "MENU_SOCIO"; // Actualizamos el paso a MENU_SOCIO
+                sesion.datosSocio = socio; // Guardamos los datos del socio en la sesión.
+                guardarEstados();
+
+                const saludoSocio = `¡Hola ${socio.nombre}! 👋\n\n` +
+                                    `Registramos una deuda de: *$${socio.deuda}*\n\n` +
+                                    `¿Qué deseás consultar?\n` +
+                                    `1️⃣ Ver planes de pago\n` +
+                                    `2️⃣ Métodos de pago (CBU/Alias)\n` +
+                                    `3️⃣ Hablar con un asesor`;
+                return client.sendText(telefono, saludoSocio);
+            } else {
+                return client.sendText(telefono, "❌ No encontré el DNI en nuestra base. Por favor, verificalo o pedí hablar con un asesor.");
+            }
+        }
+
+        // Logica menus
+        const menuActual = motor[sesion.paso]; // Trae las opciones de ese menú.
         const eleccion = parseInt(textoRecibido); // Intenta convertir la respuesta del cliente, de texto a número.
 
 
         // Si es un número y ese número es una opción válida del menú:
         if (!isNaN(eleccion) && menuActual.esValida(eleccion)) {
-            const proximoEstado = menuActual.conexiones[eleccion]; // Ej: "SOPORTE"
+
+            // Caso especial, planes de pago opcion 1 de menu socio
+            if (sesion.paso === "MENU_SOCIO" && eleccion === 1) {
+                const monto = sesion.datosSocio.deuda;
+                const msjPlanes = `📈 *Planes sugeridos para tu deuda:*\n\n` +
+                                  `✅ 10 cuotas de *$${(monto / 10).toFixed(2)}*\n` +
+                                  `✅ 5 cuotas de *$${(monto / 5).toFixed(2)}*\n` +
+                                  `✅ 2 cuotas de *$${(monto / 2).toFixed(2)}*\n\n` +
+                                  `_Marcá 0 para volver al menú anterior._`;
+
+                // conectamos manuamente a una funcion de volver
+                return client.sendText(telefono, msjPlanes);
+            }
+
+            // Caso especial, volver si marca 0
+            if (eleccion === 0) {
+                sesion.paso = "MENU_SOCIO"; // Volvemos al menú socio
+                guardarEstados();
+                const socio = sesion.datosSocio;
+                return client.sendText(telefono, `¿En qué más puedo ayudarte, ${socio.nombre}?\n1. Planes\n2. CBU\n3. Asesor`);
+            }
+
+            const proximoEstado = menuActual.conexiones[eleccion]; 
 
             if (proximoEstado) {
-                //actualizamos estado del usuario
-                estadoUsuarios[telefono] = proximoEstado; // Actualizamos memoria.
+                sesion.paso = proximoEstado; // Actualizamos el paso al nuevo menú.
                 guardarEstados();
-
-                const nuevoMenu = motorDelBot[proximoEstado];
-                client.sendText(telefono, nuevoMenu.mensaje); // Mandamos el nuevo menú.
+                client.sendText(telefono, motor[proximoEstado].mensaje);
             }
         } else {
             // Si puso "Hola" o un número que no está en el menú:
-            client.sendText(telefono, "No entendí esa opción. Recordá:\n\n" + menuActual.mensaje);
+            client.sendText(telefono, "⚠️ Opción no válida. Por favor, elegí un número de la lista.");
         }
     });
 }
