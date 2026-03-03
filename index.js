@@ -28,6 +28,14 @@ function cargarEstados() {
 wppconnect.create({
     session: 'sesion-cooperativa', // Nombre de la carpeta donde se guardará tu sesión (tokens).
     // Arrancamos codigo QR
+    // Esto es para que funcione en la VM de Azure, que no tiene navegador ni pantalla para mostrar el QR.
+    puppeteerOptions: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    },
+    //Esto te avisa si el bot está conectado o si se cayó el internet
+    statusFind: (statusSession, session) => {
+        console.log('Estado de la Sesión: ', statusSession);
+    },
     catchQR: (base64Qrimg, asciiQR) => {
         console.log(asciiQR); // Dibuja el código QR en tu terminal para que lo escanees.
     },
