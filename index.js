@@ -94,7 +94,7 @@ function start(client) {
             // Filtro DNI: Solo números, entre 7 y 8 dígitos.
             const dniLimpio = textoRecibido.replace(/\D/g, ''); // Elimina todo lo que no sea número.
 
-            if (dniLimpio.length < 7 || dniLimpio.length > 8) {
+            if (dniLimpio.length < 7 || dniLimpio.length > 9) {
                 return client.sendText(telefono, "⚠️ El DNI ingresado no parece válido. Por favor, escribí solo los números:");
             }
 
@@ -127,15 +127,28 @@ function start(client) {
 
             // Caso especial, planes de pago opcion 1 de menu socio
             if (sesion.paso === "MENU_SOCIO" && eleccion === 1) {
+                sesion.paso = "PLANES_DETALLE"; // Cambiamos a un sub paso nuevo
+                guardarEstados();
+
                 const monto = sesion.datosSocio.deuda;
-                const msjPlanes = `📈 *Planes sugeridos para tu deuda:*\n\n` +
-                                  `✅ 10 cuotas de *$${(monto / 10).toFixed(2)}*\n` +
-                                  `✅ 5 cuotas de *$${(monto / 5).toFixed(2)}*\n` +
-                                  `✅ 2 cuotas de *$${(monto / 2).toFixed(2)}*\n\n` +
-                                  `_Marcá 0 para volver al menú anterior._`;
+                const msjPlanes = `📈 *Planes para tu deuda de $${monto}:*\n\n` +
+                                  `1️⃣ 10 cuotas de *$${(monto / 10).toFixed(2)}*\n` +
+                                  `2️⃣ 5 cuotas de *$${(monto / 5).toFixed(2)}*\n` +
+                                  `3️⃣ 2 cuotas de *$${(monto / 2).toFixed(2)}*\n\n` +
+                                  `0️⃣ Volver al menú anterior`;
 
                 // conectamos manuamente a una funcion de volver
                 return client.sendText(telefono, msjPlanes);
+            }
+
+            if (sesion.paso === "PLANES_DETALLE" && [1, 2, 3].includes(eleccion)) {
+                const cuotas = eleccion === 1 ? "10" : eleccion === 2 ? "5" : "2";
+                await client.sendText(telefono, `✅ ¡Excelente elección! Has seleccionado el plan de *${cuotas} cuotas*.\n\nEn breve un asesor te enviará el cupón de pago. El bot se desactivará para que puedas hablar con nosotros.`);
+
+                //pasamos a modo humano
+                sesion.paso = "HUMANO";
+                guardarEstados();
+                return;
             }
 
             // Caso especial, volver si marca 0
@@ -143,13 +156,18 @@ function start(client) {
                 sesion.paso = "MENU_SOCIO"; // Volvemos al menú socio
                 guardarEstados();
                 const socio = sesion.datosSocio;
-                return client.sendText(telefono, `¿En qué más puedo ayudarte, ${socio.nombre}?\n1. Planes\n2. CBU\n3. Asesor`);
+                const saludoSocio = `¿En qué más puedo ayudarte, ${socio.nombre}?\n\n` +
+                                    `1️⃣ Ver planes de pago\n` +
+                                    `2️⃣ Métodos de pago\n` +
+                                    `3️⃣ Hablar con un asesor`;
+                return client.sendText(telefono, saludoSocio);
             }
 
-            const proximoEstado = menuActual.conexiones[eleccion]; 
+            // Navegación normal para el resto de opciones (CBU, Asesor, etc.)
 
+            const proximoEstado = menuActual.conexiones[eleccion]; 
             if (proximoEstado) {
-                sesion.paso = proximoEstado; // Actualizamos el paso al nuevo menú.
+                if (proximoEstado === "BIENVENIDA") delete sesion.datosSocio; // Reset si vuelve al inicio
                 guardarEstados();
                 client.sendText(telefono, motor[proximoEstado].mensaje);
             }
@@ -157,9 +175,20 @@ function start(client) {
             // Si puso "Hola" o un número que no está en el menú:
             client.sendText(telefono, "⚠️ Opción no válida. Por favor, elegí un número de la lista.");
         }
+
+        // 4. RESET POR INACTIVIDAD (Opcional: borra la sesión si no habla por 30 min)
+        clearTimeout(sesion.timer);
+        sesion.timer = setTimeout(() => {
+            delete estadoUsuarios[telefono];
+            guardarEstados();
+        }, 30 * 60 * 1000);
+
     });
 }
 
+
+
+// Futura incorporacion
 function esHorarioLaboral() {
     const ahora = new Date(); // Toma la fecha/hora actual del sistema.
     const hora = ahora.getHours(); // Saca solo la hora (0 a 23).

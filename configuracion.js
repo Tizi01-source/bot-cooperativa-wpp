@@ -18,12 +18,21 @@ const menuMetodos = new PasoMenu (
     [0]
 );
 
+const menuPlanesDetalle = new PasoMenu(
+    "PLANES_DETALLE",
+    "", // Se arma dinámicamente
+    [0, 1, 2, 3]
+);
+
 
 const motorDelBot = {
     "BIENVENIDA": menuBienvenida,
     "MENU_SOCIO": menuSocio,
-    "METODOS": menuMetodos
-}
+    "METODOS": menuMetodos,
+    "PLANES_DETALLE": menuPlanesDetalle
+};
+
+
 
 // Conexiones
 menuSocio.conectar(2, "METODOS");
