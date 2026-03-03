@@ -2,6 +2,7 @@ const wppconnect = require('@wppconnect-team/wppconnect'); // Traemos API WPPCon
 const fs = require('fs'); // Traemos el modulo de Node para lee/escribir archivos (File System)
 const motorDelBot = require('./configuracion'); // Traemos nuestro mapa de menus y conexiones
 const dotenv = require('dotenv').config(); // Para cargar variables de entorno desde un .env
+const { obtenerDatosSocio } = require('./baseDeDatos'); // Traemos la función para consultar datos de socios en Google Sheets
 
 // LOGICA DE PERSISTENCIA----------------------------------------------------------------------------------------
 
