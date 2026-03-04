@@ -24,10 +24,11 @@ async function obtenerDatosSocio(dniBuscado) {
                 socio: socio.get('SOCIO') ,
                 nombre: socio.get('NOMBRE'),
                 dni : socio.get('DNI'),
-                telefono: socio.get('TELEFONO'),
                 estado: socio.get('ESTADO'),
+                montoSacado: socio.get('MONTO_SACADO'),
+                cuotasTotales: socio.get('CUOTAS_TOTALES'),
+                cuotasPagas: socio.get('CUOTAS_PAGAS'),
                 deuda: parseFloat(socio.get('DEUDA').toString().replace(/[$.]/g, '').replace(',', '.')),
-                cuotas: socio.get('CUOTAS_PAGAS'),
             };
         }
         return null; // Si no lo encuentra

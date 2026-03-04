@@ -28,11 +28,18 @@ const metodosPago = new PasoMenu(
     [0, 1, 2]
 );
 
+const panelInfoActivo = new PasoMenu(
+    "PANEL_INFO_ACTIVO",
+    "¿En qué podemos ayudarte?\n\n1️⃣ Otras consultas (hablar con asesor)\n2️⃣ Finalizar consulta",
+    [1, 2] // Volver al inicio o panel de crédito?
+);
+
 const motorDelBot = {
     "BIENVENIDA": menuBienvenida,
     "PANEL_CREDITO": panelCredito,
     "PANEL_DEUDA": panelDeuda,
-    "METODOS_PAGO": metodosPago
+    "METODOS_PAGO": metodosPago,
+    "PANEL_INFO_ACTIVO": panelInfoActivo
 };
 
 // No usamos conexiones automáticas pesadas porque la segmentación ocurre en el cerebro (index.js)

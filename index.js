@@ -54,8 +54,10 @@ function start(client) {
 
         // Si escribo yo, se silencia el bot a ese numero para no pisarnos.
         if (message.fromMe) {
+            if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {}; // <--- Asegura que no explote si no existe
             estadoUsuarios[telefono] = { paso: "HUMANO" }; 
             guardarEstados();
+            activarModoHumano(telefono, 0.5);
             return; 
         }
 
@@ -88,7 +90,6 @@ function start(client) {
 
         // --- PASO: BIENVENIDA (PROCESAR DNI) ---
         if (sesion.paso === "BIENVENIDA") {
-            // Filtro DNI: Solo números, entre 7 y 8 dígitos.
             const dniLimpio = textoRecibido.replace(/\D/g, ''); // Elimina todo lo que no sea número.
             if (dniLimpio.length < 7 || dniLimpio.length > 9) {
                 return client.sendText(telefono, "⚠️ El DNI ingresado no parece válido. Por favor, escribí solo los números:");
@@ -96,7 +97,7 @@ function start(client) {
 
             const socio = await obtenerDatosSocio(dniLimpio); // Consultamos en la base de datos.
             
-            if (socio && socio.deuda > 0) {
+            if (socio && socio.estado === 'REFI') {
                 // CASO: SOCIO EN MORA
                 sesion.paso = "PANEL_DEUDA"; 
                 sesion.datosSocio = socio; 
@@ -108,8 +109,21 @@ function start(client) {
                                                                                   `3️⃣ 2 cuotas de $${(socio.deuda / 2).toFixed(2)}\n` +
                                                                                   `4️⃣ 1 pago de $${socio.deuda.toFixed(2)}`;
                 return client.sendText(telefono, msjDeuda);
-            } else {
+            } else if (socio && socio.estado === 'ACTIVO') {
                 // CASO: SOCIO AL DÍA O NUEVO
+                sesion.paso = "PANEL_INFO_ACTIVO";
+                sesion.datosSocio = socio;
+                guardarEstados();
+
+                const msjActivo = `¡Hola ${socio.nombre}! 👋\n\nActualmente tenés un crédito *ACTIVO*:\n` +
+                                                        `💰 *Monto:* $${socio.montoSacado}\n` +
+                                                        `📅 *Progreso:* Cuota ${socio.cuotasPagas} de ${socio.cuotasTotales}\n\n` +
+                                                        motorDelBot["PANEL_INFO_ACTIVO"].mensaje;
+                return client.sendText(telefono, msjActivo);   
+            }
+
+            else {
+                // CASO: SOCIO CANCELADO O NUEVO SIN CRÉDITO
                 sesion.paso = "PANEL_CREDITO";
                 if (socio) sesion.datosSocio = socio;
                 guardarEstados();
@@ -126,7 +140,7 @@ function start(client) {
             // Lógica PANEL_CREDITO
             if (sesion.paso === "PANEL_CREDITO") {
                 if (eleccion === 1) { // Solicitar crédito
-                    await client.sendText(telefono, "🚀 ¡Perfecto! Por favor enviá tu *Recibo de Haberes y Movimientos Bancarios*.\n\nUn asesor evaluará tu perfil. Bot desactivado por 3hs.");
+                    await client.sendText(telefono, "🚀 ¡Perfecto! Por favor enviá tu *Recibo de Haberes y Movimientos Bancarios*.\n\nUn asesor evaluará tu perfil.");
                     await client.addLabel(telefono, "PROCESO DE CREDITO");
                     activarModoHumano(telefono, 3); // 3 horas
                 } else { // Otras consultas
@@ -160,6 +174,19 @@ function start(client) {
                     return;
             }
 
+            // Lógica PANEL_INFO_ACTIVO
+            if (sesion.paso === "PANEL_INFO_ACTIVO") {
+                if (eleccion === 1) { 
+                    await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
+                    activarModoHumano(telefono, 3);
+                } else { 
+                    await client.sendText(telefono, "¡Gracias por consultarnos! 👋");
+                    delete estadoUsuarios[telefono]; // Resetea el bot para este usuario
+                    guardarEstados();
+                }
+                return;
+            }
+
         } else {
             client.sendText(telefono, "⚠️ Opción no válida.");
         }
@@ -187,10 +214,17 @@ function resetearPorInactividad(telefono) {
 
 
 function activarModoHumano(telefono, horas) {
+    // 1. Si ya había un timer de humano para este número, lo borramos (para que reinicie el conteo)
+    if (estadoUsuarios[telefono] && estadoUsuarios[telefono].timer) {
+        clearTimeout(estadoUsuarios[telefono].timer);
+    }
+
     estadoUsuarios[telefono].paso = "HUMANO";
     guardarEstados();
-    setTimeout(() => {
+
+    estadoUsuarios[telefono].timer = setTimeout(() => {
         if (estadoUsuarios[telefono] && estadoUsuarios[telefono].paso === "HUMANO") {
+            console.log(`[REGRESO] El bot vuelve a activarse para ${telefono}`);
             delete estadoUsuarios[telefono];
             guardarEstados();
         }
