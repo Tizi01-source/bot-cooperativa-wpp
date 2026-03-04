@@ -198,34 +198,34 @@ function start(client) {
 
 // FUNCIONES AUXILIARES ------------------------------------------------------------------------------------------
 
+let timers = {}; // Variable global para los timers (fuera de estadoUsuarios para que no se guarden en el JSON)
+
 function resetearPorInactividad(telefono) {
-    // Si ya existe un timer para este número, lo borramos para reiniciarlo
-    if (estadoUsuarios[telefono] && estadoUsuarios[telefono].timer) {
-        clearTimeout(estadoUsuarios[telefono].timer);
+    if (timers[telefono]) {
+        clearTimeout(timers[telefono]);
     }
 
-    // Creamos un nuevo timer de 30 minutos (30 * 60 * 1000 ms)
-    estadoUsuarios[telefono].timer = setTimeout(() => {
-        console.log(`[LIMPIEZA] Sesión expirada por inactividad para ${telefono}`);
+    timers[telefono] = setTimeout(() => {
+        console.log(`[LIMPIEZA] Sesión expirada para ${telefono}`);
         delete estadoUsuarios[telefono];
+        delete timers[telefono]; // Limpiamos también el registro del timer
         guardarEstados();
     }, 30 * 60 * 1000);
 }
 
-
 function activarModoHumano(telefono, horas) {
-    // 1. Si ya había un timer de humano para este número, lo borramos (para que reinicie el conteo)
-    if (estadoUsuarios[telefono] && estadoUsuarios[telefono].timer) {
-        clearTimeout(estadoUsuarios[telefono].timer);
+    if (timers[telefono]) {
+        clearTimeout(timers[telefono]);
     }
 
     estadoUsuarios[telefono].paso = "HUMANO";
     guardarEstados();
 
-    estadoUsuarios[telefono].timer = setTimeout(() => {
+    timers[telefono] = setTimeout(() => {
         if (estadoUsuarios[telefono] && estadoUsuarios[telefono].paso === "HUMANO") {
             console.log(`[REGRESO] El bot vuelve a activarse para ${telefono}`);
             delete estadoUsuarios[telefono];
+            delete timers[telefono];
             guardarEstados();
         }
     }, horas * 60 * 60 * 1000);
