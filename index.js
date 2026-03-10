@@ -205,6 +205,11 @@ function start(client) {
                     activarModoHumano(telefono, 1);
 
                 }
+                else if (eleccion === 5) { // Finalizar
+                    await client.sendText(telefono, "¡Gracias por consultarnos! 👋");
+                    delete estadoUsuarios[telefono]; 
+                    guardarEstados();
+                }
                 return;
             }
 
