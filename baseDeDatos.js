@@ -1,6 +1,6 @@
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
-const credenciales = require('./google-keys.json'); // Recordá que este archivo NO se sube a GitHub
+const credenciales = require('./google-keys.json');
 
 async function obtenerDatosSocio(dniBuscado) {
     try {
@@ -25,13 +25,14 @@ async function obtenerDatosSocio(dniBuscado) {
                 nombre: socio.get('NOMBRE'),
                 dni : socio.get('DNI'),
                 estado: socio.get('ESTADO'),
+                fechaCredito: socio.get('FECHA_CREDITO'),
                 montoSacado: socio.get('MONTO_SACADO'),
                 cuotasTotales: socio.get('CUOTAS_TOTALES'),
                 cuotasPagas: socio.get('CUOTAS_PAGAS'),
                 deuda: parseFloat(socio.get('DEUDA').toString().replace(/[$.]/g, '').replace(',', '.')),
             };
         }
-        return null; // Si no lo encuentra
+        return null;
     } catch (error) {
         console.error("Error en DB:", error);
         return null;

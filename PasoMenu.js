@@ -1,10 +1,10 @@
-class PasoMenu {
+class PasoMenu { // Clase para representar cada paso o menú del bot.
 
-    constructor(id, mensaje, opcionesValidas) {
-        this.id = id;
-        this.mensaje = mensaje;
-        this.opcionesValidas = opcionesValidas;
-        this.conexiones = {};
+    constructor(id, mensaje, opcionesValidas) { 
+        this.id = id; // Id para cada panel o paso, como "BIENVENIDA", "PANEL_CREDITO", etc.
+        this.mensaje = mensaje; // El mensaje que el bot muestra al usuario en este paso.
+        this.opcionesValidas = opcionesValidas; // Las opciones que puede responder el usuario.
+        this.conexiones = {}; // Conexiones entre paneles.
     }
 
     presentar() {
