@@ -1,5 +1,5 @@
 const wppconnect = require('@wppconnect-team/wppconnect'); // Traemos API WPPConnect
-const fs = require('fs'); // Traemos el modulo de Node para lee/escribir archivos (File System)
+const fs = require('fs'); // Traemos el modulo de Node para leer/escribir archivos (File System)
 const motorDelBot = require('./configuracion'); // Traemos nuestro mapa de menus y conexiones
 const dotenv = require('dotenv').config(); // Para cargar variables de entorno desde un .env
 const obtenerDatosSocio = require('./baseDeDatos'); // Traemos la función para consultar datos de socios en Google Sheets
@@ -19,7 +19,7 @@ function cargarEstados() {
     if (fs.existsSync(ARCHIVO_ESTADOS)) {
         return JSON.parse(fs.readFileSync(ARCHIVO_ESTADOS, 'utf-8'));
     }
-    // Si no existe (primera vez), devuelve un objeto vacío.
+    // Si no existe, devuelve un objeto vacío.
     return {}; 
 }
 
@@ -46,7 +46,7 @@ wppconnect.create({
 // FUNCION PRINCIPAL DEL BOT ------------------------------------------------------------------------------------------
 
 function start(client) {
-    console.log("🤖 BOT INICIADO");
+    console.log("🤖 BOT INICIADO"); // Debug
     
     client.onMessage(async (message) => {
         const telefono = message.from;   // Identificamos quien escribe, su numero.
@@ -78,7 +78,7 @@ function start(client) {
         return; 
         }
         
-        // Si no lo conocemos (no está en el JSON) manda el panel de bienvenida.
+        // Si no lo conocemos (no está en el JSON) manda el panel de bienvenida. Posiblemente lo cambiemos.
         if (!estadoUsuarios[telefono]) {
             estadoUsuarios[telefono] = { paso: "BIENVENIDA" };
             guardarEstados();
@@ -123,7 +123,7 @@ function start(client) {
                     } else { // Si no lo encuentra, lo tratamos como nuevo socio.
                         sesion.paso = "MENU_NUEVO_SOCIO";
                         guardarEstados();
-                        return client.sendText(telefono, "No te encontré en nuestra base de datos.\n\n" + motorDelBot["MENU_NUEVO_SOCIO"].mensaje);
+                        return client.sendText(telefono, "Hola! Bienvenido a la Cooperativa MAYCOOP.\n\n" + motorDelBot["MENU_NUEVO_SOCIO"].mensaje);
                     }
                 } else {
                     // Si el socio indica que escribio mal, volvemos al inicio.
@@ -316,8 +316,10 @@ function start(client) {
 
 // FUNCIONES AUXILIARES ------------------------------------------------------------------------------------------
 
+// Variable global para guardar los timers de inactividad de cada usuario.
 let timers = {}; 
 
+// Funcion para resetear el timer de inactividad cada vez que el usuario interactúa.
 function resetearPorInactividad(telefono) {
     if (timers[telefono]) clearTimeout(timers[telefono]);
     timers[telefono] = setTimeout(() => {
@@ -328,6 +330,7 @@ function resetearPorInactividad(telefono) {
     }, 30 * 60 * 1000);
 }
 
+// Funcion para activar el modo humano por un tiempo determinado (en horas).
 function activarModoHumano(telefono, horas) {
     if (timers[telefono]) clearTimeout(timers[telefono]);
     estadoUsuarios[telefono].paso = "HUMANO";
@@ -341,10 +344,7 @@ function activarModoHumano(telefono, horas) {
     }, horas * 60 * 60 * 1000);
 }
 
-
-
-
-// Futura incorporacion
+// Futura incorporacion a agregar de establecer horario de funcion el bot, a analizar.
 function esHorarioLaboral() {
     const ahora = new Date(); // Toma la fecha/hora actual del sistema.
     const hora = ahora.getHours(); // Saca solo la hora (0 a 23).

@@ -1,17 +1,15 @@
 const PasoMenu = require('./PasoMenu');
 
-// Punto de entrada para todos.
+// Mensaje Inicial.
 const menuBienvenida = new PasoMenu (
     "BIENVENIDA",   
     "¡Hola! 👋 Soy el asistente de la Cooperativa MAYCOOP.\n\nPor favor, *escribí tu DNI* para que pueda buscar tu información.", 
     [] 
 );
 
-// Validacion de dni y socio
+// Validacion de dni y socio en excel.
 const pasoConfirmarNumero = new PasoMenu ( "CONFIRMAR_NUMERO_DNI", "", [1, 2] );
 const pasoConfirmarSocio = new PasoMenu ( "CONFIRMAR_SOCIO", "", [1, 2] );
-
-//--- Flujo para deudores (REFI) ---//
 
 // Menú inicial para deudores (REFI).
 const menuInicialMora = new PasoMenu (
@@ -27,7 +25,7 @@ const panelDeuda = new PasoMenu (
     [1, 2, 3, 4, 0]
 );
 
-// Menu para socios activos
+// Menú inicial para socios (ACTIVO).
 const menuSocioActivo = new PasoMenu (
     "MENU_SOCIO_ACTIVO",
     "¿En qué podemos ayudarte?\n\n1️⃣ Consultar sobre mi crédito actual\n2️⃣ Solicitar un crédito paralelo\n3️⃣ Hablar con un asesor\n4️⃣ Finalizar consulta",
@@ -41,13 +39,14 @@ const pasoExtraActivo = new PasoMenu (
     [1, 2]
 );
 
-// Menu para socios cancelados o nuevos
+// Menú inicial para socios CANCELADOS y socios NUEVOS.
 const menuNuevoSocio = new PasoMenu (
     "MENU_NUEVO_SOCIO",
     "¿En qué podemos ayudarte?\n\n1️⃣ Solicitar un crédito\n2️⃣ Otras consultas (asesor)\n3️⃣ Finalizar consulta",
     [1, 2, 3]
 );
 
+//Conexion de ID con Paneles.
 const motorDelBot = {
     "BIENVENIDA": menuBienvenida,
     "CONFIRMAR_NUMERO_DNI": pasoConfirmarNumero,
