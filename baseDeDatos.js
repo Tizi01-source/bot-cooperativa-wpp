@@ -13,14 +13,13 @@ async function obtenerDatosSocio(dniBuscado) {
         const doc = new GoogleSpreadsheet('1bJi4trILW9hz8vjuswIM7DQ8a2KKABBJd0NB_jLShkM', serviceAccountAuth);
         await doc.loadInfo();
 
-        // 1. SOLO usamos la primera hoja (CASHFLOW)
-        const hoja = doc.sheetsByIndex[0];
-        await hoja.loadHeaderRow(2); // La fila 2 tiene los nombres de columnas
-        const filas = await hoja.getRows();
+        const hoja = doc.sheetsByIndex[0]; // Seleccionamos la primera hoja del documento.
+        await hoja.loadHeaderRow(2); // Seleccionamos la fila 2.
+        const filas = await hoja.getRows(); // Obtenemos todas las filas de la hoja.
 
-        const dniLimpio = dniBuscado.toString().replace(/\D/g, '');
+        const dniLimpio = dniBuscado.toString().replace(/\D/g, ''); // Pasamos a limpio el dniBuscado.
 
-        // 2. FILTRADO: Buscamos filas que contengan el DNI dentro del CUIL
+        // Buscamos filas que contengan el DNI dentro del CUIL.
         const coinciden = filas.filter(f => {
             const cuilExcel = (f.get('CUIL') || "").toString().replace(/\D/g, '');
             return cuilExcel.includes(dniLimpio);
@@ -28,15 +27,16 @@ async function obtenerDatosSocio(dniBuscado) {
 
         if (coinciden.length > 0) {
             // Estados válidos de Mora
-            const estadosMora = ['REFINANCIACION', 'REFINANCIACION V', 'SOTANO', 'MOROSO', 'ANALISIS MOV', 'INCOBRABLE'];
+            const estadosMora = ['REFINANCIACION', 'REFINANCIACION V', 'SOTANO', 'MOROSO', 'ANALISIS MOV', 'INCOBRABLE']; // Guardamos los estados que consideramos como "Mora"
             
+            // Funcion para limpiar y convertir montos a números.
             const limpiarMonto = (valor) => {
                 if (!valor) return 0;
                 let limpio = valor.toString().replace('$', '').replace(/\s/g, '').replace(/,/g, '');
                 return parseFloat(limpio) || 0;
             };
 
-            // 3. MAPEO ESTRICTO PARA LA HOJA CASHFLOW
+            // Mapeamos una fila a un formato más amigable, identificando si está en mora o activo y el metodo.
             const mapear = (fila) => {
                 if (!fila) return null;
                 const est = (fila.get('ESTADO') || "").toString().trim().toUpperCase();
@@ -63,7 +63,7 @@ async function obtenerDatosSocio(dniBuscado) {
             const filasHaberes = coinciden.filter(f => esHaberes((f.get('METODO') || "").toString().trim().toUpperCase()));
             const filasCBU = coinciden.filter(f => esCBU((f.get('METODO') || "").toString().trim().toUpperCase()));
 
-            // Elegimos la mejor fila de cada método (Prioridad: Mora > Activo > Otro)
+            // Filtro de prioridad: Mora > Activo > Otro
             const buscarMejor = (lista) => {
                 if (!lista || lista.length === 0) return null;
                 const mora = lista.find(f => estadosMora.includes((f.get('ESTADO') || "").toString().trim().toUpperCase()));
@@ -75,10 +75,11 @@ async function obtenerDatosSocio(dniBuscado) {
                 return lista[lista.length - 1]; 
             };
 
+            // Información final para haberes y cbu, aplicando el filtro de prioridad.
             const infoHaberes = mapear(buscarMejor(filasHaberes));
             const infoCBU = mapear(buscarMejor(filasCBU));
 
-            // 4. ESTADO GLOBAL: Si hay un crédito en mora, obliga el estado "REFI"
+            // Si hay un crédito en mora, obliga el estado "REFI"
             let estadoGlobal = 'CANCELADO';
             if ((infoHaberes && infoHaberes.esMora) || (infoCBU && infoCBU.esMora)) {
                 estadoGlobal = 'REFI';
@@ -86,14 +87,16 @@ async function obtenerDatosSocio(dniBuscado) {
                 estadoGlobal = 'ACTIVO';
             }
 
+            // Suma la deuda si tiene deuda en ambos créditos, o toma la deuda del que tenga si solo tiene uno.
             const deudaTotal = (infoHaberes?.esMora ? infoHaberes.deuda : 0) + (infoCBU?.esMora ? infoCBU.deuda : 0);
             
+            // Une las columnas de Nombre y Apellido.
             const nombreSocio = `${coinciden[0].get('NOMBRE') || ""} ${coinciden[0].get('APELLIDO') || ""}`.trim();
 
             return {
                 nombre: nombreSocio || "Socio",
                 dni: dniBuscado,
-                estado: estadoGlobal, // 'REFI', 'ACTIVO', o 'CANCELADO'
+                estado: estadoGlobal,
                 deudaTotal: deudaTotal,
                 haberes: infoHaberes,
                 cbu: infoCBU,
