@@ -14,7 +14,7 @@ const pasoConfirmarSocio = new PasoMenu ( "CONFIRMAR_SOCIO", "", [1, 2] );
 // Menú inicial para deudores (REFI).
 const menuInicialMora = new PasoMenu (
     "MENU_INICIAL_MORA",
-    "¿Cómo preferís regularizar tu situación?\n\n1️⃣ Pago por Alias (CBU)\n2️⃣ Armar un plan de cuotas\n3️⃣ Pago con Tarjeta / Link de pago\n4️⃣ Hablar con un asesor",
+    "",
     [1, 2, 3, 4, 5]
 );
 
@@ -28,18 +28,21 @@ const panelDeuda = new PasoMenu (
 // Menú inicial para socios (ACTIVO).
 const menuSocioActivo = new PasoMenu (
     "MENU_SOCIO_ACTIVO",
-    "¿En qué podemos ayudarte?\n\n1️⃣ Consultar sobre mi crédito actual\n2️⃣ Solicitar un crédito paralelo\n3️⃣ Hablar con un asesor\n4️⃣ Finalizar consulta",
+    "",
     [1, 2, 3, 4]
 );
 
-// Paso extra para después de mostrar el detalle del crédito al socio activo
+// Paso extra para después de mostrar el detalle del crédito al socio activo.
 const pasoExtraActivo = new PasoMenu (
     "CONFIRMAR_EXTRA_ACTIVO",
     "",
     [1, 2]
 );
 
-// Menú inicial para socios CANCELADOS y socios NUEVOS.
+// Menú para socios con más de un crédito ACTIVO. 
+const menuDosActivos = new PasoMenu("MENU_DOS_ACTIVOS", "", [1, 2, 3, 4]);
+
+// Menú inicial para socios CANCELADOS o NUEVOS.
 const menuNuevoSocio = new PasoMenu (
     "MENU_NUEVO_SOCIO",
     "¿En qué podemos ayudarte?\n\n1️⃣ Solicitar un crédito\n2️⃣ Otras consultas (asesor)\n3️⃣ Finalizar consulta",
@@ -55,6 +58,7 @@ const motorDelBot = {
     "MENU_INICIAL_MORA": menuInicialMora,
     "PANEL_DEUDA": panelDeuda,
     "MENU_SOCIO_ACTIVO": menuSocioActivo,
+    "MENU_DOS_ACTIVOS": menuDosActivos,
     "MENU_NUEVO_SOCIO": menuNuevoSocio
 };
 

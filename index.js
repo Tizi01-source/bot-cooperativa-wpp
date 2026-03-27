@@ -25,8 +25,10 @@ function cargarEstados() {
 
 // ARRANQUE DE WHATSAPP BOT ------------------------------------------------------------------------------------------
 
+/* DEBUG
 console.log("📂 Cargando configuración...");
 console.log("✅ Menús disponibles:", Object.keys(motorDelBot));
+*/
 
 wppconnect.create({
     session: 'sesion-cooperativa', // Nombre de la carpeta donde se guardará la sesión (tokens).
@@ -49,20 +51,17 @@ wppconnect.create({
 // FUNCION PRINCIPAL DEL BOT ------------------------------------------------------------------------------------------
 
 function start(client) {
-    console.log("🤖 BOT INICIADO"); // Debug
+    console.log("🤖 BOT INICIADO");
     
     client.onMessage(async (message) => {
-        console.log(`📩 LLEGÓ MENSAJE: de ${message.from} dice: ${message.body}`); // <--- TEST 1
-
         const telefono = message.from;   // Identificamos quien escribe, su numero.
-        const textoRecibido = (message.body || "").trim(); // Limpiamos espacios de la respuesta a opciones(ej: " 1 " -> "1").
-        console.log(`De: ${telefono} - Texto: ${textoRecibido}`); // <--- TEST 2
+        const textoRecibido = (message.body || "").trim(); // Limpiamos espacios de la respuesta a opciones.
 
         // Si escribo yo, se silencia el bot 30 min. a ese numero para no pisarnos.
         if (message.fromMe) {
             console.log("🚫 Mensaje enviado por mí (Bot). Ignoro.");
-            
-            if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {}; // <--- Asegura que no explote si no existe
+
+            if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {};
             estadoUsuarios[telefono] = { paso: "HUMANO" }; 
             guardarEstados();
             activarModoHumano(telefono, 0.5); // 30 min de silencio si escribo yo.
@@ -85,7 +84,7 @@ function start(client) {
         return; 
         }
         
-        // Si no lo conocemos (no está en el JSON) manda el panel de bienvenida. Posiblemente lo cambiemos.
+        // Si no lo conocemos (no está en el JSON) manda el panel de bienvenida.
         if (!estadoUsuarios[telefono]) {
             estadoUsuarios[telefono] = { paso: "BIENVENIDA" };
             guardarEstados();
@@ -95,7 +94,7 @@ function start(client) {
         // Traemos la "sesión" o "estado" actual del usuario.
         let sesion = estadoUsuarios[telefono]; 
         
-        // --- PASO: BIENVENIDA (PROCESAR DNI) ---
+        // --- PASO: BIENVENIDA: PROCESAR DNI ---
         if (sesion.paso === "BIENVENIDA") {
             const dniLimpio = textoRecibido.replace(/\D/g, ''); // Elimina todo lo que no sea número.
             if (dniLimpio.length < 7 || dniLimpio.length > 9) {
@@ -109,7 +108,7 @@ function start(client) {
             return client.sendText(telefono, `Confirmame, ¿ingresaste el DNI: *${dniLimpio}*?\n\n1️⃣ Sí, es correcto\n2️⃣ No, lo escribí mal`);
         }
         
-        // --- PROCESAR MENÚS ---
+        // --- PROCESA MENÚS ---
         const menuActual = motorDelBot[sesion.paso]; // Trae las opciones de ese menú.
         const eleccion = parseInt(textoRecibido); // Intenta convertir la respuesta del cliente, de texto a número.
 
@@ -141,83 +140,109 @@ function start(client) {
                 }
             }
 
-            // Si el socio confirma su identidad, chequeamos su estado, si tiene REFI, ACTIVO o CANCELADO.
+            // Si el socio confirma su identidad, chequeamos su estado y cruzamos CBU/Haberes
             if (sesion.paso === "CONFIRMAR_SOCIO") {
                 if (eleccion === 1) {
                     const socio = sesion.datosSocio;
-                    // Caso REFI.
+                    let msjRespuesta = `¡Perfecto ${socio.nombre}! 👋\n\n`;
+                    
+                    // --- ESCENARIO 1: TIENE DEUDA (EN UNO O EN AMBOS) ---
                     if (socio.estado === 'REFI') {
                         sesion.paso = "MENU_INICIAL_MORA";
-                        guardarEstados();
-                        const msjMora = `¡Perfecto ${socio.nombre}! 👋\n\nRegistramos una deuda de *$${socio.deuda.toFixed(2)}* correspondiente al crédito gestionado el día *${socio.fechaCredito || 'N/A'}*.\n\n` + motorDelBot["MENU_INICIAL_MORA"].mensaje;
-                        return client.sendText(telefono, msjMora);
+                        
+                        // Buscamos cuál es el que tiene la mora para mostrarlo
+                        const creditoMora = (socio.haberes?.esMora) ? socio.haberes : socio.cbu;
+
+                        if (socio.haberes?.esMora && socio.cbu?.esMora) {
+                            msjRespuesta += `⚠️ *Atención:* Registramos deuda en tus créditos por *CBU y Haberes*.\n`;
+                            msjRespuesta += `💰 *Deuda Total:* $${socio.deudaTotal.toFixed(2)}\n`;
+                        } else if (creditoMora) {
+                            msjRespuesta += `⚠️ *Atención:* Registramos una deuda pendiente en tu crédito por *${creditoMora.metodo}*.\n`;
+                            msjRespuesta += `💰 *Monto adeudado:* $${creditoMora.deuda.toFixed(2)}\n`;
+                            
+                            if (socio.tieneAmbos) {
+                                msjRespuesta += `✅ Tu otra línea de crédito se encuentra al día.\n`;
+                            }
+                        }
+
+                        msjRespuesta += `\n¿Cómo preferís seguir?\n\n`;
+                        msjRespuesta += `1️⃣ Ver opciones de pago (Panel)\n`;
+                        msjRespuesta += `2️⃣ Detalle deuda CBU\n`;
+                        msjRespuesta += `3️⃣ Detalle deuda Haberes\n`;
+                        msjRespuesta += `4️⃣ Hablar con un asesor\n`;
+                        msjRespuesta += `5️⃣ Salir`;
                     } 
-                    // Caso ACTIVO.
+                    
+                    // --- ESCENARIO 2: ESTÁ AL DÍA (ACTIVO) ---
                     else if (socio.estado === 'ACTIVO') {
-                        sesion.paso = "MENU_SOCIO_ACTIVO"; // 
-                        guardarEstados();
-                        const msjActivo = `¡Perfecto ${socio.nombre}! 👋\n\nActualmente tenés un crédito *ACTIVO*:\n` +
-                                            `💰 *Monto sacado:* $${socio.montoSacado}\n` +
-                                            `📅 *Fecha:* ${socio.fechaCredito || 'N/A'}\n` +
-                                            `📊 *Progreso:* Cuota ${socio.cuotasPagas} de ${socio.cuotasTotales}\n\n` +
-                                            motorDelBot["MENU_SOCIO_ACTIVO"].mensaje;
-                        return client.sendText(telefono, msjActivo);
+                        if (socio.tieneAmbos && socio.haberes?.esActivo && socio.cbu?.esActivo) {
+                            // CASO DOBLE ACTIVO
+                            sesion.paso = "MENU_DOS_ACTIVOS"; 
+                            msjRespuesta += `✅ Tenés dos créditos *ACTIVOS* con nosotros.\n\n`;
+                            msjRespuesta += `¿Qué detalle necesitás ver?\n\n`;
+                            msjRespuesta += `1️⃣ Ver datos crédito CBU\n`;
+                            msjRespuesta += `2️⃣ Ver datos crédito Haberes\n`;
+                            msjRespuesta += `3️⃣ Hablar con un asesor\n`;
+                            msjRespuesta += `4️⃣ Salir`;
+                        } else {
+                            // CASO UN SOLO ACTIVO (con o sin oferta comercial)
+                            sesion.paso = "MENU_SOCIO_ACTIVO";
+                            const activo = socio.haberes?.esActivo ? socio.haberes : socio.cbu;
+                            msjRespuesta += `✅ Tenés un crédito *ACTIVO* por *${activo.metodo}*.\n`;
+                            msjRespuesta += `📊 *Progreso:* Cuota ${activo.cuotasPagas} de ${activo.cuotasTotales}\n\n`;
+
+                            let oferta = "";
+                            if (socio.haberes && !socio.cbu) {
+                                msjRespuesta += `💡 *Dato:* ¿Sabías que también podés solicitar un crédito por *CBU*?\n\n`;
+                                oferta = `2️⃣ Solicitar crédito por CBU\n`;
+                            } else if (socio.cbu && !socio.haberes) {
+                                msjRespuesta += `💡 *Dato:* ¡También tenemos disponible la línea por *Haberes/Ampeal*!\n\n`;
+                                oferta = `2️⃣ Solicitar crédito Haberes\n`;
+                            }
+
+                            msjRespuesta += `¿En qué podemos ayudarte?\n1️⃣ Hablar con un asesor\n${oferta}`;
+                            msjRespuesta += oferta !== "" ? `3️⃣ Ver más detalles\n4️⃣ Salir` : `2️⃣ Ver más detalles\n3️⃣ Salir`;
+                        }
                     } 
-                    // CASO: NUEVO O CANCELADO
                     else {
-                        sesion.paso = "MENU_NUEVO_SOCIO"; //
-                        guardarEstados();
-                        return client.sendText(telefono, `¡Perfecto ${socio.nombre}! 👋\n\n` + motorDelBot["MENU_NUEVO_SOCIO"].mensaje);
+                        sesion.paso = "MENU_NUEVO_SOCIO";
+                        msjRespuesta += motorDelBot["MENU_NUEVO_SOCIO"].mensaje;
                     }
-                } else {
-                    sesion.paso = "BIENVENIDA";
-                    delete sesion.datosSocio;
+
                     guardarEstados();
-                    return client.sendText(telefono, "Entendido. Por favor, volvé a escribir tu DNI correctamente:");
+                    return client.sendText(telefono, msjRespuesta);
                 }
             }
 
+
             // Paneles de Deuda.
             if (sesion.paso === "MENU_INICIAL_MORA") {
+                const socio = sesion.datosSocio;
 
-                if (eleccion === 1) { // Primera opción: Pago por Alias (CBU)
-                    await client.sendText(telefono, "🏦 *Datos para Transferencia:*\n\n*Alias:* MAYCOOPBAPRO\n*Banco:* Provincia\n\nPor favor, enviá el comprobante por acá.");
-                    await client.addLabel(telefono, 'MORA');
-                    activarModoHumano(telefono, 0.5);
-                } 
-                else if (eleccion === 2) { // Segunda opción: Armar plan de cuotas (Lo mandamos al panel matemático)
-
+                if (eleccion === 1) { // Panel de pagos
                     sesion.paso = "PANEL_DEUDA";
                     guardarEstados();
-                    const socio = sesion.datosSocio;
                     const msjCuotas = `${motorDelBot["PANEL_DEUDA"].mensaje}` +
-                                     `1️⃣ 10 cuotas de $${(socio.deuda / 10).toFixed(2)}\n` +
-                                     `2️⃣ 5 cuotas de $${(socio.deuda / 5).toFixed(2)}\n` +
-                                     `3️⃣ 2 cuotas de $${(socio.deuda / 2).toFixed(2)}\n` +
-                                     `4️⃣ 1 pago de $${socio.deuda.toFixed(2)}`;
+                                     `1️⃣ 10 cuotas de $${(socio.deudaTotal / 10).toFixed(2)}\n` +
+                                     `2️⃣ 5 cuotas de $${(socio.deudaTotal / 5).toFixed(2)}\n` +
+                                     `3️⃣ 2 cuotas de $${(socio.deudaTotal / 2).toFixed(2)}\n` +
+                                     `4️⃣ 1 pago de $${socio.deudaTotal.toFixed(2)}`;
                     return client.sendText(telefono, msjCuotas);
-
-                }
-                else if (eleccion === 3) { // Tercera opcion: Tarjeta o link, A INCORPORAR
-
-                    await client.sendText(telefono, "💳 ¡Perfecto! En instantes un asesor te enviará el *Link de Pago*.");
-                    await client.addLabel(telefono, 'MORA');
-                    activarModoHumano(telefono, 1);
-
-                }
-
-                else if (eleccion === 4) { // Asesor
-                    await client.sendText(telefono, "Entendido. Un asesor se pondrá en contacto pronto.");
-                    await client.addLabel(telefono, 'CONSULTA');
-                    activarModoHumano(telefono, 1);
-
-                }
-                else if (eleccion === 5) { // Finalizar
-                    await client.sendText(telefono, "¡Gracias por consultarnos! 👋");
-                    delete estadoUsuarios[telefono]; 
+                } 
+                else if (eleccion === 2 || eleccion === 3) { // Detalle CBU o Haberes
+                    const credito = eleccion === 2 ? socio.cbu : socio.haberes;
+                    if (!credito) return client.sendText(telefono, "No registramos esa línea de crédito. Elegí otra opción:");
+                    
+                    const msj = `📄 *Detalle crédito ${credito.metodo}:*\n\n` +
+                                `Estado: ${credito.estadoOriginal}\n` +
+                                `Deuda: $${credito.deuda.toFixed(2)}\n` +
+                                `Cuotas: ${credito.cuotasPagas}/${credito.cuotasTotales}\n\n` +
+                                `1️⃣ Volver a opciones de pago\n2️⃣ Salir`;
+                    sesion.paso = "CONFIRMAR_EXTRA_ACTIVO"; // Reusamos este paso para volver o salir
                     guardarEstados();
+                    return client.sendText(telefono, msj);
                 }
-                return;
+                // ... (tus opciones de asesor y salir igual)
             }
 
             // Lógica PANEL_DEUDA
@@ -234,37 +259,83 @@ function start(client) {
 
             // Lógica MENU_SOCIO_ACTIVO
             if (sesion.paso === "MENU_SOCIO_ACTIVO") {
+                const socio = sesion.datosSocio;
+                const tieneSoloUno = !socio.tieneAmbos;
+                // Buscamos el que esté activo para mostrarlo en "Ver Detalles"
+                const activo = (socio.haberes && socio.haberes.esActivo) ? socio.haberes : socio.cbu;
 
-                if (eleccion === 1) { // Consultar crédito actual
-
-                    const socio = sesion.datosSocio;
-                    
-                    const msjDetalle = `📄 *Detalle de tu crédito:* \n\n` +
-                                       `📅 *Fecha de gestión:* ${socio.fechaCredito || 'N/A'}\n` +
-                                       `💰 *Monto original:* $${socio.montoSacado}\n` +
-                                       `📊 *Estado de cuotas:* ${socio.cuotasPagas} de ${socio.cuotasTotales}\n\n` +
-                                       `¿Necesitás algo más?\n` +
-                                       `1️⃣ Hablar con un asesor\n` +
-                                       `2️⃣ Finalizar consulta`;
-
-                    sesion.paso = "CONFIRMAR_EXTRA_ACTIVO";
-                    guardarEstados();
-                    return client.sendText(telefono, msjDetalle);
-
-                } else if (eleccion === 2) { // Crédito paralelo
-
-                    await client.sendText(telefono, "🚀 ¡Excelente! Para evaluar un *Crédito Paralelo*, por favor enviá tu *Recibo de Haberes y Movimientos Bancarios*.");
-                    await client.addLabel(telefono, 'CREDITO');
-                    activarModoHumano(telefono, 1);
-
-                } else if (eleccion === 3) { // Asesor
-
+                if (eleccion === 1) { // 1 siempre es ASESOR
                     await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
                     await client.addLabel(telefono, 'CONSULTA');
                     activarModoHumano(telefono, 1);
+                } 
+                
+                else if (eleccion === 2) {
+                    if (tieneSoloUno) {
+                        // Caso 1 crédito: El 2 es SOLICITAR
+                        await client.sendText(telefono, "🚀 ¡Excelente elección! Para evaluar tu nueva solicitud, por favor enviá tu *Recibo de Haberes y Movimientos Bancarios*.");
+                        await client.addLabel(telefono, 'CREDITO');
+                        activarModoHumano(telefono, 1);
+                    } else {
+                        // Caso 2 créditos: El 2 es DETALLES
+                        const msjDetalle = `📄 *Detalle de tu crédito:* \n\n` +
+                                        `💰 *Monto:* $${activo.montoSacado}\n` +
+                                        `📅 *Fecha:* ${activo.fecha || 'N/A'}\n` +
+                                        `📊 *Progreso:* Cuota ${activo.cuotasPagas} de ${activo.cuotasTotales}\n\n` +
+                                        `1️⃣ Hablar con un asesor\n2️⃣ Finalizar consulta`;
+                        sesion.paso = "CONFIRMAR_EXTRA_ACTIVO";
+                        guardarEstados();
+                        return client.sendText(telefono, msjDetalle);
+                    }
+                } 
+                
+                else if (eleccion === 3) {
+                    if (tieneSoloUno) {
+                        // Caso 1 crédito: El 3 es DETALLES
+                        const msjDetalle = `📄 *Detalle de tu crédito:* \n\n` +
+                                        `💰 *Monto:* $${activo.montoSacado}\n` +
+                                        `📅 *Fecha:* ${activo.fecha || 'N/A'}\n` +
+                                        `📊 *Progreso:* Cuota ${activo.cuotasPagas} de ${activo.cuotasTotales}\n\n` +
+                                        `1️⃣ Hablar con un asesor\n2️⃣ Finalizar consulta`;
+                        sesion.paso = "CONFIRMAR_EXTRA_ACTIVO";
+                        guardarEstados();
+                        return client.sendText(telefono, msjDetalle);
+                    } else {
+                        // Caso 2 créditos: El 3 es SALIR
+                        await client.sendText(telefono, "¡Gracias por consultarnos! 👋");
+                        delete estadoUsuarios[telefono];
+                        guardarEstados();
+                    }
+                } 
+                
+                else if (eleccion === 4 && tieneSoloUno) { 
+                    // Caso 1 crédito: El 4 es SALIR
+                    await client.sendText(telefono, "¡Gracias por consultarnos! 👋");
+                    delete estadoUsuarios[telefono];
+                    guardarEstados();
+                }
+                return;
+            }
 
-                } else if (eleccion === 4) { // FINALIZAR
-
+            if (sesion.paso === "MENU_DOS_ACTIVOS") {
+                const socio = sesion.datosSocio;
+                if (eleccion === 1 || eleccion === 2) {
+                    const credito = eleccion === 1 ? socio.cbu : socio.haberes;
+                    const msj = `📄 *Detalle crédito ${credito.metodo}:*\n\n` +
+                                `💰 Sacado: $${credito.montoSacado}\n` +
+                                `📊 Cuota: ${credito.cuotasPagas} de ${credito.cuotasTotales}\n` +
+                                `💵 Valor cuota: $${credito.montoCuota}\n\n` +
+                                `1️⃣ Ver el otro crédito\n2️⃣ Hablar con asesor\n3️⃣ Salir`;
+                    sesion.paso = "CONFIRMAR_EXTRA_ACTIVO";
+                    guardarEstados();
+                    return client.sendText(telefono, msj);
+                } 
+                else if (eleccion === 3) { // ASESOR
+                    await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
+                    await client.addLabel(telefono, 'CONSULTA');
+                    activarModoHumano(telefono, 1);
+                } 
+                else if (eleccion === 4) { // SALIR
                     await client.sendText(telefono, "¡Gracias por consultarnos! 👋");
                     delete estadoUsuarios[telefono]; 
                     guardarEstados();
@@ -274,14 +345,30 @@ function start(client) {
 
             // Menu extra para socios activos que quieren hablar con asesor o finalizar después de consultar su crédito.
             if (sesion.paso === "CONFIRMAR_EXTRA_ACTIVO") {
+                const socio = sesion.datosSocio;
 
-                if (eleccion === 1) { // Quiere hablar con asesor
-                    await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
-                    await client.addLabel(telefono, 'CONSULTA');
-                    activarModoHumano(telefono, 2);
-
-                } else { // Quiere finalizar
-                    
+                if (eleccion === 1) { 
+                    // Si viene de MORA, vuelve al menú de mora
+                    if (socio.estado === 'REFI') {
+                        sesion.paso = "MENU_INICIAL_MORA";
+                        guardarEstados();
+                        // Re-enviamos el menú de mora (puedes copiar el texto del bloque REFI)
+                        return client.sendText(telefono, "¿Cómo preferís seguir?\n1️⃣ Ver opciones de pago\n2️⃣ Detalle CBU\n3️⃣ Detalle Haberes\n4️⃣ Asesor\n5️⃣ Salir");
+                    } 
+                    // Si tiene dos activos, vuelve al menú de selección de activos
+                    else if (socio.haberes?.esActivo && socio.cbu?.esActivo) {
+                        sesion.paso = "MENU_DOS_ACTIVOS";
+                        guardarEstados();
+                        return client.sendText(telefono, "¿Qué detalle necesitás ver?\n1️⃣ Ver datos crédito CBU\n2️⃣ Ver datos crédito Haberes\n3️⃣ Asesor\n4️⃣ Salir");
+                    }
+                    // Si solo tiene uno, lo mandamos con un asesor (porque ya vio sus detalles)
+                    else {
+                        await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
+                        await client.addLabel(telefono, 'CONSULTA');
+                        activarModoHumano(telefono, 2);
+                    }
+                } else if (eleccion === 2) { 
+                    // Finalizar consulta
                     await client.sendText(telefono, "¡Gracias por consultarnos! 👋");
                     delete estadoUsuarios[telefono]; 
                     guardarEstados();
