@@ -57,13 +57,12 @@ function start(client) {
             if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {}; // <--- Asegura que no explote si no existe
             estadoUsuarios[telefono] = { paso: "HUMANO" }; 
             guardarEstados();
-            activarModoHumano(telefono, 0.5);
+            activarModoHumano(telefono, 0.5); // 30 min de silencio si escribo yo.
             return; 
         }
         
         // Si el usuario ya está marcado como "HUMANO" el bot lo ignora.
         if (estadoUsuarios[telefono] && estadoUsuarios[telefono].paso === "HUMANO") { 
-            console.log(`[SILENCIO] ${telefono} está en modo HUMANO. No responde el bot.`);
             return;
         }
 
@@ -321,6 +320,9 @@ let timers = {};
 
 // Funcion para resetear el timer de inactividad cada vez que el usuario interactúa.
 function resetearPorInactividad(telefono) {
+    // Si está en modo humano, el bot no lo borra por inactividad.
+    if (estadoUsuarios[telefono] && estadoUsuarios[telefono].paso === "HUMANO") return;
+
     if (timers[telefono]) clearTimeout(timers[telefono]);
     timers[telefono] = setTimeout(() => {
         console.log(`[LIMPIEZA] Sesión expirada para ${telefono}`);
@@ -333,8 +335,11 @@ function resetearPorInactividad(telefono) {
 // Funcion para activar el modo humano por un tiempo determinado (en horas).
 function activarModoHumano(telefono, horas) {
     if (timers[telefono]) clearTimeout(timers[telefono]);
+
+    if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {};
     estadoUsuarios[telefono].paso = "HUMANO";
     guardarEstados();
+    
     timers[telefono] = setTimeout(() => {
         if (estadoUsuarios[telefono] && estadoUsuarios[telefono].paso === "HUMANO") {
             delete estadoUsuarios[telefono];
