@@ -25,6 +25,9 @@ function cargarEstados() {
 
 // ARRANQUE DE WHATSAPP BOT ------------------------------------------------------------------------------------------
 
+console.log("📂 Cargando configuración...");
+console.log("✅ Menús disponibles:", Object.keys(motorDelBot));
+
 wppconnect.create({
     session: 'sesion-cooperativa', // Nombre de la carpeta donde se guardará la sesión (tokens).
 
@@ -49,11 +52,16 @@ function start(client) {
     console.log("🤖 BOT INICIADO"); // Debug
     
     client.onMessage(async (message) => {
+        console.log(`📩 LLEGÓ MENSAJE: de ${message.from} dice: ${message.body}`); // <--- TEST 1
+
         const telefono = message.from;   // Identificamos quien escribe, su numero.
         const textoRecibido = (message.body || "").trim(); // Limpiamos espacios de la respuesta a opciones(ej: " 1 " -> "1").
+        console.log(`De: ${telefono} - Texto: ${textoRecibido}`); // <--- TEST 2
 
         // Si escribo yo, se silencia el bot 30 min. a ese numero para no pisarnos.
         if (message.fromMe) {
+            console.log("🚫 Mensaje enviado por mí (Bot). Ignoro.");
+            
             if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {}; // <--- Asegura que no explote si no existe
             estadoUsuarios[telefono] = { paso: "HUMANO" }; 
             guardarEstados();
@@ -339,7 +347,7 @@ function activarModoHumano(telefono, horas) {
     if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {};
     estadoUsuarios[telefono].paso = "HUMANO";
     guardarEstados();
-    
+
     timers[telefono] = setTimeout(() => {
         if (estadoUsuarios[telefono] && estadoUsuarios[telefono].paso === "HUMANO") {
             delete estadoUsuarios[telefono];

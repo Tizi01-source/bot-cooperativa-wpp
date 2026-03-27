@@ -10,7 +10,7 @@ async function obtenerDatosSocio(dniBuscado) {
             scopes: ['https://www.googleapis.com/auth/spreadsheets'],
         });
 
-        const doc = new GoogleSpreadsheet('1g3l0zGMm3FOCN7RCY7ZP3PSEubeRD9OK', serviceAccountAuth);
+        const doc = new GoogleSpreadsheet('1bJi4trILW9hz8vjuswIM7DQ8a2KKABBJd0NB_jLShkM', serviceAccountAuth);
         await doc.loadInfo();
 
         // Seleccionamos la hoja y cargamos las filas.
