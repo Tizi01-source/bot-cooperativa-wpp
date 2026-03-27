@@ -27,38 +27,20 @@ async function obtenerDatosSocio(dniBuscado) {
 
         // --- LÓGICA DE PRIORIDAD DE CRÉDITOS ---
         if (coinciden.length > 0) {
-
-            // Clasificamos cualquier estado de refinaciación.
             const estadosMora = ['REFINANCIACION', 'REFINANCIACION V', 'SOTANO', 'MOROSO', 'ANALISIS MOV'];
-
+            
             const limpiarMonto = (valor) => {
                 if (!valor) return 0;
                 let limpio = valor.toString().replace('$', '').replace(/\s/g, '').replace(/,/g, '');
                 return parseFloat(limpio) || 0;
             };
 
-            // 2. SEPARACIÓN DE REGISTROS POR MÉTODO
-            const filasHaberes = coinciden.filter(f => ['HABERES', 'AMPEAL'].includes((f.get('METODO') || "").toUpperCase()));
-            const filasCBU = coinciden.filter(f => ['CBU', 'CBU C'].includes((f.get('METODO') || "").toUpperCase()));
-
-            // 3. PRIORIZACIÓN (Mora > Activo > Otros)
-            const buscarMejorFila = (filas) => {
-                if (filas.length === 0) return null;
-                return filas.find(f => estadosMora.includes(f.get('ESTADO'))) || 
-                       filas.find(f => f.get('ESTADO') === 'ACTIVO') || 
-                       filas[filas.length - 1];
-            };
-
-            const haberesData = buscarMejorFila(filasHaberes);
-            const cbuData = buscarMejorFila(filasCBU);
-
-            // 4. MAPEO DE OBJETOS DE CRÉDITO
-            const mapearCredito = (fila) => {
+            // Función interna para mapear datos de una fila
+            const mapear = (fila) => {
                 if (!fila) return null;
-                // .trim() elimina espacios y .toUpperCase() asegura la coincidencia
-                let est = (fila.get('ESTADO') || "").toString().trim().toUpperCase(); 
+                const est = (fila.get('ESTADO') || "").toString().trim().toUpperCase();
                 return {
-                    metodo: fila.get('METODO'),
+                    metodo: (fila.get('METODO') || "").toString().trim().toUpperCase(),
                     estadoOriginal: est,
                     esMora: estadosMora.includes(est),
                     esActivo: est === 'ACTIVO',
@@ -71,30 +53,35 @@ async function obtenerDatosSocio(dniBuscado) {
                 };
             };
 
-            const infoHaberes = mapearCredito(haberesData);
-            const infoCBU = mapearCredito(cbuData);
+            // 1. Clasificamos las filas por tipo de método
+            const filasHaberes = coinciden.filter(f => ['HABERES', 'AMPEAL'].includes((f.get('METODO') || "").toString().trim().toUpperCase()));
+            const filasCBU = coinciden.filter(f => ['CBU', 'CBU C'].includes((f.get('METODO') || "").toString().trim().toUpperCase()));
 
-            // 5. DETERMINACIÓN DEL ESTADO GLOBAL PARA EL INDEX.JS
-            let estadoGlobal = 'CANCELADO'; // Por defecto
-            
-            // Si cualquiera de los dos está en mora, mandamos a REFI (Prioridad absoluta)
+            // 2. Buscamos la mejor fila de cada tipo (Prioridad: Mora > Activo > Cancelado)
+            const buscarMejor = (lista) => {
+                return lista.find(f => estadosMora.includes(f.get('ESTADO').trim().toUpperCase())) || 
+                       lista.find(f => f.get('ESTADO').trim().toUpperCase() === 'ACTIVO') || 
+                       lista[lista.length - 1];
+            };
+
+            const infoHaberes = mapear(buscarMejor(filasHaberes));
+            const infoCBU = mapear(buscarMejor(filasCBU));
+
+            // 3. DETERMINAMOS EL ESTADO GLOBAL (Prioridad absoluta a REFI si hay mora en alguno)
+            let estadoGlobal = 'CANCELADO';
             if ((infoHaberes && infoHaberes.esMora) || (infoCBU && infoCBU.esMora)) {
                 estadoGlobal = 'REFI';
-            } 
-            // Si no hay mora pero hay alguno activo, mandamos a ACTIVO
-            else if ((infoHaberes && infoHaberes.esActivo) || (infoCBU && infoCBU.esActivo)) {
+            } else if ((infoHaberes && infoHaberes.esActivo) || (infoCBU && infoCBU.esActivo)) {
                 estadoGlobal = 'ACTIVO';
             }
 
-            // 6. CÁLCULO DE DEUDA TOTAL (Solo suma las que están en mora)
-            const deudaTotal = (infoHaberes?.esMora ? infoHaberes.deuda : 0) + 
-                              (infoCBU?.esMora ? infoCBU.deuda : 0);
+            // 4. Calculamos deuda total real
+            const deudaTotal = (infoHaberes?.esMora ? infoHaberes.deuda : 0) + (infoCBU?.esMora ? infoCBU.deuda : 0);
 
-            // 7. RETORNO DE OBJETO FINAL
             return {
                 nombre: `${coinciden[0].get('NOMBRE')} ${coinciden[0].get('APELLIDO')}`.trim(),
                 dni: dniBuscado,
-                estado: estadoGlobal, // 'REFI', 'ACTIVO' o 'CANCELADO'
+                estado: estadoGlobal,
                 deudaTotal: deudaTotal,
                 haberes: infoHaberes,
                 cbu: infoCBU,

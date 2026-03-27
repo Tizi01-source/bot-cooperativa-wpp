@@ -150,13 +150,17 @@ function start(client) {
                     if (socio.estado === 'REFI') {
                         sesion.paso = "MENU_INICIAL_MORA";
                         
-                        // Buscamos cuál es el que tiene la mora para mostrarlo
-                        const creditoMora = (socio.haberes?.esMora) ? socio.haberes : socio.cbu;
+                        // Identificamos cuál es el que tiene la deuda (Haberes, CBU o Ambos)
+                        const tieneHaberesMora = socio.haberes?.esMora;
+                        const tieneCBUMora = socio.cbu?.esMora;
 
-                        if (socio.haberes?.esMora && socio.cbu?.esMora) {
+                        if (tieneHaberesMora && tieneCBUMora) {
                             msjRespuesta += `⚠️ *Atención:* Registramos deuda en tus créditos por *CBU y Haberes*.\n`;
                             msjRespuesta += `💰 *Deuda Total:* $${socio.deudaTotal.toFixed(2)}\n`;
-                        } else if (creditoMora) {
+                        } else {
+                            // Elegimos el objeto que tenga la mora
+                            const creditoMora = tieneHaberesMora ? socio.haberes : socio.cbu;
+                            
                             msjRespuesta += `⚠️ *Atención:* Registramos una deuda pendiente en tu crédito por *${creditoMora.metodo}*.\n`;
                             msjRespuesta += `💰 *Monto adeudado:* $${creditoMora.deuda.toFixed(2)}\n`;
                             
