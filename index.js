@@ -150,21 +150,23 @@ function start(client) {
                     if (socio.estado === 'REFI') {
                         sesion.paso = "MENU_INICIAL_MORA";
                         
-                        // Identificamos cuál es el que tiene la deuda (Haberes, CBU o Ambos)
-                        const tieneHaberesMora = socio.haberes?.esMora;
-                        const tieneCBUMora = socio.cbu?.esMora;
-
-                        if (tieneHaberesMora && tieneCBUMora) {
+                        // Si tiene deuda en ambos, mostramos el total
+                        if (socio.haberes?.esMora && socio.cbu?.esMora) {
                             msjRespuesta += `⚠️ *Atención:* Registramos deuda en tus créditos por *CBU y Haberes*.\n`;
                             msjRespuesta += `💰 *Deuda Total:* $${socio.deudaTotal.toFixed(2)}\n`;
                         } else {
-                            // Elegimos el objeto que tenga la mora
-                            const creditoMora = tieneHaberesMora ? socio.haberes : socio.cbu;
+                            // Buscamos cuál es el que tiene la deuda específicamente
+                            const creditoMora = socio.haberes?.esMora ? socio.haberes : socio.cbu;
                             
-                            msjRespuesta += `⚠️ *Atención:* Registramos una deuda pendiente en tu crédito por *${creditoMora.metodo}*.\n`;
-                            msjRespuesta += `💰 *Monto adeudado:* $${creditoMora.deuda.toFixed(2)}\n`;
+                            // Si por alguna razón técnica creditoMora es null pero el estado es REFI, 
+                            // usamos una descripción genérica para no romper el bot
+                            const metodoNombre = creditoMora?.metodo || "tu cuenta";
+                            const montoDeuda = creditoMora?.deuda || socio.deudaTotal;
+
+                            msjRespuesta += `⚠️ *Atención:* Registramos una deuda pendiente en tu crédito por *${metodoNombre}*.\n`;
+                            msjRespuesta += `💰 *Monto adeudado:* $${montoDeuda.toFixed(2)}\n`;
                             
-                            if (socio.tieneAmbos) {
+                            if (socio.tieneAmbos && !creditoMora?.esMora) {
                                 msjRespuesta += `✅ Tu otra línea de crédito se encuentra al día.\n`;
                             }
                         }

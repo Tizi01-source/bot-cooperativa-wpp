@@ -59,9 +59,13 @@ async function obtenerDatosSocio(dniBuscado) {
 
             // 2. Buscamos la mejor fila de cada tipo (Prioridad: Mora > Activo > Cancelado)
             const buscarMejor = (lista) => {
-                return lista.find(f => estadosMora.includes(f.get('ESTADO').trim().toUpperCase())) || 
-                       lista.find(f => f.get('ESTADO').trim().toUpperCase() === 'ACTIVO') || 
-                       lista[lista.length - 1];
+                if (lista.length === 0) return null;
+                return lista.find(f => {
+                    const est = (f.get('ESTADO') || "").toString().trim().toUpperCase();
+                    return estadosMora.includes(est);
+                }) || 
+                lista.find(f => (f.get('ESTADO') || "").toString().trim().toUpperCase() === 'ACTIVO') || 
+                lista[lista.length - 1];
             };
 
             const infoHaberes = mapear(buscarMejor(filasHaberes));
