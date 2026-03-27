@@ -13,21 +13,22 @@ async function obtenerDatosSocio(dniBuscado) {
         const doc = new GoogleSpreadsheet('1bJi4trILW9hz8vjuswIM7DQ8a2KKABBJd0NB_jLShkM', serviceAccountAuth);
         await doc.loadInfo();
 
-        // Seleccionamos la hoja y cargamos las filas.
+        // 1. SOLO usamos la primera hoja (CASHFLOW)
         const hoja = doc.sheetsByIndex[0];
-        await hoja.loadHeaderRow(2); 
+        await hoja.loadHeaderRow(2); // La fila 2 tiene los nombres de columnas
         const filas = await hoja.getRows();
 
-        // Buscamos todas las filas que coincidan con el DNI dentro del CUIL.
+        const dniLimpio = dniBuscado.toString().replace(/\D/g, '');
+
+        // 2. FILTRADO: Buscamos filas que contengan el DNI dentro del CUIL
         const coinciden = filas.filter(f => {
-            const cuilExcel = f.get('CUIL') ? f.get('CUIL').toString().replace(/\D/g, '') : "";
-            const dniLimpio = dniBuscado.toString().replace(/\D/g, '');
+            const cuilExcel = (f.get('CUIL') || "").toString().replace(/\D/g, '');
             return cuilExcel.includes(dniLimpio);
         });
 
-        // --- LÓGICA DE PRIORIDAD DE CRÉDITOS ---
         if (coinciden.length > 0) {
-            const estadosMora = ['REFINANCIACION', 'REFINANCIACION V', 'SOTANO', 'MOROSO', 'ANALISIS MOV'];
+            // Estados válidos de Mora
+            const estadosMora = ['REFINANCIACION', 'REFINANCIACION V', 'SOTANO', 'MOROSO', 'ANALISIS MOV', 'INCOBRABLE'];
             
             const limpiarMonto = (valor) => {
                 if (!valor) return 0;
@@ -35,43 +36,49 @@ async function obtenerDatosSocio(dniBuscado) {
                 return parseFloat(limpio) || 0;
             };
 
-            // Función interna para mapear datos de una fila
+            // 3. MAPEO ESTRICTO PARA LA HOJA CASHFLOW
             const mapear = (fila) => {
                 if (!fila) return null;
                 const est = (fila.get('ESTADO') || "").toString().trim().toUpperCase();
+                const met = (fila.get('METODO') || "").toString().trim().toUpperCase();
+                
                 return {
-                    metodo: (fila.get('METODO') || "").toString().trim().toUpperCase(),
+                    metodo: met,
                     estadoOriginal: est,
                     esMora: estadosMora.includes(est),
                     esActivo: est === 'ACTIVO',
-                    fecha: fila.get('FECHA'),
+                    fecha: fila.get('FECHA') || "N/A",
                     montoSacado: limpiarMonto(fila.get('MONTO')),
-                    cuotasTotales: fila.get('PLAZO'),
-                    cuotasPagas: fila.get('CTAS. PAGAS'),
+                    cuotasTotales: fila.get('PLAZO') || "0",
+                    cuotasPagas: fila.get('CTAS. PAGAS') || "0",
                     montoCuota: limpiarMonto(fila.get('MONTO_CTA')),
                     deuda: limpiarMonto(fila.get('DEUDA'))
                 };
             };
 
-            // 1. Clasificamos las filas por tipo de método
-            const filasHaberes = coinciden.filter(f => ['HABERES', 'AMPEAL'].includes((f.get('METODO') || "").toString().trim().toUpperCase()));
-            const filasCBU = coinciden.filter(f => ['CBU', 'CBU C'].includes((f.get('METODO') || "").toString().trim().toUpperCase()));
+            // Identificamos el tipo de crédito
+            const esHaberes = (m) => m.includes('HABERES') || m.includes('AMPEAL');
+            const esCBU = (m) => m.includes('CBU') || m.includes('ONLINE');
 
-            // 2. Buscamos la mejor fila de cada tipo (Prioridad: Mora > Activo > Cancelado)
+            const filasHaberes = coinciden.filter(f => esHaberes((f.get('METODO') || "").toString().trim().toUpperCase()));
+            const filasCBU = coinciden.filter(f => esCBU((f.get('METODO') || "").toString().trim().toUpperCase()));
+
+            // Elegimos la mejor fila de cada método (Prioridad: Mora > Activo > Otro)
             const buscarMejor = (lista) => {
-                if (lista.length === 0) return null;
-                return lista.find(f => {
-                    const est = (f.get('ESTADO') || "").toString().trim().toUpperCase();
-                    return estadosMora.includes(est);
-                }) || 
-                lista.find(f => (f.get('ESTADO') || "").toString().trim().toUpperCase() === 'ACTIVO') || 
-                lista[lista.length - 1];
+                if (!lista || lista.length === 0) return null;
+                const mora = lista.find(f => estadosMora.includes((f.get('ESTADO') || "").toString().trim().toUpperCase()));
+                if (mora) return mora;
+                
+                const activo = lista.find(f => (f.get('ESTADO') || "").toString().trim().toUpperCase() === 'ACTIVO');
+                if (activo) return activo;
+                
+                return lista[lista.length - 1]; 
             };
 
             const infoHaberes = mapear(buscarMejor(filasHaberes));
             const infoCBU = mapear(buscarMejor(filasCBU));
 
-            // 3. DETERMINAMOS EL ESTADO GLOBAL (Prioridad absoluta a REFI si hay mora en alguno)
+            // 4. ESTADO GLOBAL: Si hay un crédito en mora, obliga el estado "REFI"
             let estadoGlobal = 'CANCELADO';
             if ((infoHaberes && infoHaberes.esMora) || (infoCBU && infoCBU.esMora)) {
                 estadoGlobal = 'REFI';
@@ -79,20 +86,21 @@ async function obtenerDatosSocio(dniBuscado) {
                 estadoGlobal = 'ACTIVO';
             }
 
-            // 4. Calculamos deuda total real
             const deudaTotal = (infoHaberes?.esMora ? infoHaberes.deuda : 0) + (infoCBU?.esMora ? infoCBU.deuda : 0);
+            
+            const nombreSocio = `${coinciden[0].get('NOMBRE') || ""} ${coinciden[0].get('APELLIDO') || ""}`.trim();
 
             return {
-                nombre: `${coinciden[0].get('NOMBRE')} ${coinciden[0].get('APELLIDO')}`.trim(),
+                nombre: nombreSocio || "Socio",
                 dni: dniBuscado,
-                estado: estadoGlobal,
+                estado: estadoGlobal, // 'REFI', 'ACTIVO', o 'CANCELADO'
                 deudaTotal: deudaTotal,
                 haberes: infoHaberes,
                 cbu: infoCBU,
                 tieneAmbos: infoHaberes !== null && infoCBU !== null
             };
         }
-        return null; // No se encontró el socio
+        return null;
     } catch (error) {
         console.error("Error en DB:", error);
         return null;
@@ -100,5 +108,3 @@ async function obtenerDatosSocio(dniBuscado) {
 }
 
 module.exports = obtenerDatosSocio;
-
-
