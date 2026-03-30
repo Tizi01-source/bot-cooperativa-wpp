@@ -59,14 +59,16 @@ wppconnect.create({
 function start(client) {
     console.log("🤖 BOT INICIADO");
     
-    client.onMessage(async (message) => {
+    //
+       
+    client.onAnyMessage(async (message) => {
         const telefono = message.fromMe ? message.to : message.from;   // Identificamos quien escribe.
         const textoRecibido = (message.body || "").trim(); // Limpiamos espacios de la respuesta a opciones.
 
         // Si escribo yo, se silencia el bot 30 min. a ese numero para no pisarnos.
         if (message.fromMe) {
             if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {};
-            estadoUsuarios[telefono] = { paso: "HUMANO" }; 
+            estadoUsuarios[telefono].paso = "HUMANO";
             guardarEstados();
             activarModoHumano(telefono, 0.5); // 30 min de silencio si escribo yo.
             return; 
