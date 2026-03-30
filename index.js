@@ -60,7 +60,7 @@ function start(client) {
     console.log("🤖 BOT INICIADO");
     
     client.onMessage(async (message) => {
-        const telefono = message.from;   // Identificamos quien escribe, su numero.
+        const telefono = message.fromMe ? message.to : message.from;   // Identificamos quien escribe.
         const textoRecibido = (message.body || "").trim(); // Limpiamos espacios de la respuesta a opciones.
 
         // Si escribo yo, se silencia el bot 30 min. a ese numero para no pisarnos.
