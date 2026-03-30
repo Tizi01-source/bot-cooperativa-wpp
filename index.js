@@ -61,7 +61,7 @@ function start(client) {
     
     //
        
-    client.onAnyMessage(async (message) => {
+    client.onMessage(async (message) => {
         const telefono = message.fromMe ? message.to : message.from;   // Identificamos quien escribe.
         const textoRecibido = (message.body || "").trim(); // Limpiamos espacios de la respuesta a opciones.
 
