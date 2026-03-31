@@ -76,7 +76,7 @@ async function obtenerDatosSocio(dniBuscado) {
                     return {
                         metodo: met,
                         estadoOriginal: est,
-                        esMora: true,
+                        esMora: est !== 'CANCELADO',
                         esActivo: false,
                         fecha: fila.get('FECHA') || "N/A",
                         montoSacado: limpiarMonto(fila.get('MONTO')), 
@@ -86,6 +86,7 @@ async function obtenerDatosSocio(dniBuscado) {
                         deuda: limpiarMonto(fila.get('DEUDA ACTUAL'))
                     };
             };
+
             // Filtro del Cashflow
             const buscarMejorCashflow = (lista) => {
                 if (!lista || lista.length === 0) return null;
@@ -103,10 +104,27 @@ async function obtenerDatosSocio(dniBuscado) {
             const cashHaberes = coincidenCashflow.filter(f => esHaberes((f.get('METODO') || "").toString().trim().toUpperCase()));
             const cashCBU = coincidenCashflow.filter(f => esCBU((f.get('METODO') || "").toString().trim().toUpperCase()));
 
+            const determinarMejorEstado = (listaRefi, listaCash) => {
+                // Si debe plata en Refi, es prioridad absoluta.
+                const refiEnDeuda = listaRefi.find(r => r.estadoOriginal !== 'CANCELADO');
+                if (refiEnDeuda) return refiEnDeuda;
+
+                // Si no tiene deuda en Refi, buscamos si sacó un crédito ACTIVO nuevo en Cashflow
+                const cashActivo = buscarMejorCashflow(listaCash);
+                if (cashActivo && cashActivo.esActivo) return cashActivo;
+
+                // Si no hay crédito nuevo activo, pero tiene un CANCELADO en Refi, devolvemos el cancelado
+                const refiCancelado = listaRefi.find(r => r.estadoOriginal === 'CANCELADO');
+                if (refiCancelado) return refiCancelado;
+
+                // Sino, el último registro viejo del Cashflow
+                return cashActivo;
+            };
+
             // Si tiene una Refi, usamos los datos reales de la Refi. 
             // Si no tiene Refi, buscamos si tiene algún crédito activo en Cashflow.
-            let infoHaberes = refiHaberes.length > 0 ? refiHaberes[0] : buscarMejorCashflow(cashHaberes);
-            let infoCBU = refiCBU.length > 0 ? refiCBU[0] : buscarMejorCashflow(cashCBU);
+            let infoHaberes = determinarMejorEstado(refiHaberes, cashHaberes);
+            let infoCBU = determinarMejorEstado(refiCBU, cashCBU);
 
             // Determinamos el estado global del socio.
             let estadoGlobal = 'CANCELADO';
