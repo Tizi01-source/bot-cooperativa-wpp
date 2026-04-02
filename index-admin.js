@@ -4,6 +4,8 @@ const motorDelBot = require('./configuracion-admin'); // Llama a la config de ad
 const dotenv = require('dotenv').config(); 
 const obtenerDatosSocio = require('./baseDeDatos'); // Usa la misma base de datos
 
+// LOGICA DE PERSISTENCIA----------------------------------------------------------------------------------------
+
 // Memoria separada para que no choque con el otro bot
 const ARCHIVO_ESTADOS = './estados-admin.json'; 
 let estadoUsuarios = cargarEstados(); 
@@ -22,7 +24,13 @@ function cargarEstados() {
 wppconnect.create({
     session: 'sesion-admin', // Sesión separada en WhatsApp
     puppeteerOptions: {
-        args: ['--no-sandbox', '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--single-process', '--disable-dev-shm-usage', '--disable-setuid-sandbox']
+        args: ['--no-sandbox', 
+            '--disable-accelerated-2d-canvas', 
+            '--no-first-run', 
+            '--no-zygote', 
+            '--single-process', 
+            '--disable-dev-shm-usage', 
+            '--disable-setuid-sandbox']
     },
     statusFind: (statusSession, session) => {
         console.log('Estado de la Sesión Admin: ', statusSession);
@@ -37,7 +45,7 @@ wppconnect.create({
 function start(client) {
     console.log("🤖 BOT DE ADMINISTRACIÓN INICIADO");
     
-    client.onAnyMessage(async (message) => {
+    client.onMessage(async (message) => {
         const telefono = message.fromMe ? message.to : message.from;   
         const textoRecibido = (message.body || "").trim(); 
 
