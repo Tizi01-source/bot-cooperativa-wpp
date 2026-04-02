@@ -1,12 +1,11 @@
 const wppconnect = require('@wppconnect-team/wppconnect'); 
 const fs = require('fs'); 
-const motorDelBot = require('./configuracion-admin'); // Llama a la config de admin
+const motorDelBot = require('./configuracion-admin'); 
 const dotenv = require('dotenv').config(); 
-const obtenerDatosSocio = require('./baseDeDatos'); // Usa la misma base de datos
+const obtenerDatosSocio = require('./baseDeDatos');
 
 // LOGICA DE PERSISTENCIA----------------------------------------------------------------------------------------
 
-// Memoria separada para que no choque con el otro bot
 const ARCHIVO_ESTADOS = './estados-admin.json'; 
 let estadoUsuarios = cargarEstados(); 
 
@@ -22,7 +21,7 @@ function cargarEstados() {
 }
 
 wppconnect.create({
-    session: 'sesion-admin', // Sesión separada en WhatsApp
+    session: 'sesion-admin', 
     puppeteerOptions: {
         args: ['--no-sandbox', 
             '--disable-accelerated-2d-canvas', 
@@ -71,7 +70,6 @@ function start(client) {
             return; 
         }
         
-        // 1. INICIO DEL CHAT (MUESTRA EL MENÚ ADMIN)
         if (!estadoUsuarios[telefono]) {
             estadoUsuarios[telefono] = { paso: "BIENVENIDA_ADMIN" };
             guardarEstados();
@@ -101,7 +99,6 @@ function start(client) {
         try {
             switch (sesion.paso) {
 
-                // 2. PROCESA LA RESPUESTA AL MENÚ DE ADMINISTRACIÓN
                 case "BIENVENIDA_ADMIN":
                     if (eleccion === 1) { 
                         sesion.paso = "BIENVENIDA";
@@ -193,7 +190,7 @@ function start(client) {
                         sesion.paso = "CONFIRMAR_EXTRA_ACTIVO";
                         guardarEstados();
                         return client.sendText(telefono, `📄 *Detalle ${credito.metodo}:*\nEstado: ${credito.estadoOriginal}\nDeuda: $${credito.deuda.toFixed(2)}\nCuotas: ${credito.cuotasPagas}/${credito.cuotasTotales}\n\n1️⃣ Volver a opciones de pago\n2️⃣ Salir`);
-                    } else if (eleccion === 4) { // NUEVO: Libre de Deuda
+                    } else if (eleccion === 4) { 
                         await client.sendText(telefono, "✅ Solicitud registrada.\n\nUn operador validará tu estado de cuenta y te enviará tu *Libre de Deuda* por este medio.");
                         agregarEtiquetaSegura(client, telefono, 'LIBRE_DEUDA');
                         activarModoHumano(telefono, 2);
@@ -228,7 +225,7 @@ function start(client) {
                         sesion.paso = "CONFIRMAR_EXTRA_ACTIVO";
                         guardarEstados();
                         return client.sendText(telefono, msjDetalle);
-                    } else if (eleccion === 3) { // NUEVO: Libre de Deuda
+                    } else if (eleccion === 3) { 
                         await client.sendText(telefono, "✅ Solicitud registrada.\n\nUn operador validará tu estado de cuenta y te enviará tu *Libre de Deuda* por este medio.");
                         agregarEtiquetaSegura(client, telefono, 'LIBRE_DEUDA');
                         activarModoHumano(telefono, 2);
@@ -251,7 +248,7 @@ function start(client) {
                         sesion.paso = "CONFIRMAR_EXTRA_ACTIVO";
                         guardarEstados();
                         return client.sendText(telefono, msj);
-                    } else if (eleccion === 3) { // NUEVO: Libre de Deuda
+                    } else if (eleccion === 3) { 
                         await client.sendText(telefono, "✅ Solicitud registrada.\n\nUn operador validará tu estado de cuenta y te enviará tu *Libre de Deuda* por este medio.");
                         agregarEtiquetaSegura(client, telefono, 'LIBRE_DEUDA');
                         activarModoHumano(telefono, 2);
@@ -298,7 +295,7 @@ function start(client) {
                         await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
                         agregarEtiquetaSegura(client, telefono, 'CONSULTA');
                         activarModoHumano(telefono, 1);
-                    } else if (eleccion === 3) { // NUEVO: Libre de Deuda
+                    } else if (eleccion === 3) { 
                         await client.sendText(telefono, "✅ Solicitud registrada.\n\nUn operador validará tu estado de cuenta y te enviará tu *Libre de Deuda* por este medio.");
                         agregarEtiquetaSegura(client, telefono, 'LIBRE_DEUDA');
                         activarModoHumano(telefono, 2);
@@ -315,7 +312,7 @@ function start(client) {
             delete estadoUsuarios[telefono];
             guardarEstados();
         }
-
+        
         resetearPorInactividad(telefono);
     });
 }
