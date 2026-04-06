@@ -346,10 +346,27 @@ function activarModoHumano(telefono, horas) {
     }, horas * 60 * 60 * 1000);
 }
 
-async function agregarEtiquetaSegura(client, telefono, etiqueta) {
+// Función segura y dinámica para agregar etiquetas en WhatsApp Business
+async function agregarEtiquetaSegura(client, telefono, nombreEtiqueta) {
     try {
-        await client.addLabel(telefono, etiqueta);
+        // 1. Traemos todas las etiquetas que existen en tu WhatsApp Business
+        const etiquetas = await client.getAllLabels();
+        
+        // 2. Buscamos si la etiqueta ya existe (ignorando mayúsculas/minúsculas)
+        let etiquetaEncontrada = etiquetas.find(e => e.name.toUpperCase() === nombreEtiqueta.toUpperCase());
+        
+        // 3. Si la etiqueta no existe en tu WhatsApp, el bot la crea automáticamente
+        if (!etiquetaEncontrada) {
+            console.log(`[ETIQUETAS] Creando nueva etiqueta: ${nombreEtiqueta}`);
+            etiquetaEncontrada = await client.addNewLabel(nombreEtiqueta);
+        }
+        
+        // 4. Le asignamos la etiqueta al chat usando su ID interno
+        if (etiquetaEncontrada && etiquetaEncontrada.id) {
+            await client.addOrRemoveLabels([telefono], [{ labelId: etiquetaEncontrada.id, type: 'add' }]);
+            console.log(`✅ Etiqueta '${nombreEtiqueta}' agregada con éxito a ${telefono}`);
+        }
     } catch (error) {
-        console.log(`[AVISO] No se pudo agregar la etiqueta '${etiqueta}'.`);
+        console.log(`[AVISO] Error al gestionar la etiqueta '${nombreEtiqueta}'. Detalle:`, error.message);
     }
 }
