@@ -264,25 +264,42 @@ function start(client) {
                     break;
 
                 case "CONFIRMAR_EXTRA_ACTIVO":
-                    const sExtra = sesion.datosSocio;
-                    if (eleccion === 1) { 
-                        if (sExtra.estado === 'REFI') { 
+                    const sExtraAdmin = sesion.datosSocio;
+                    
+                    if (sExtraAdmin.estado === 'REFI') { // SOCIO EN MORA (1: Volver, 2: Salir)
+                        if (eleccion === 1) {
                             sesion.paso = "MENU_INICIAL_MORA";
                             guardarEstados();
-                            return client.sendText(telefono, "¿Cómo preferís seguir?\n1️⃣ Ver opciones de pago\n2️⃣ Detalle CBU\n3️⃣ Detalle Haberes\n4️⃣ Solicitar Libre de Deuda\n5️⃣ Asesor\n6️⃣ Salir");
-                        } else if (sExtra.haberes?.esActivo && sExtra.cbu?.esActivo) { 
+                            return client.sendText(telefono, "¿Cómo preferís seguir?\n1️⃣ Ver opciones de pago\n2️⃣ Detalle deuda CBU\n3️⃣ Detalle deuda Haberes\n4️⃣ Solicitar Libre de Deuda\n5️⃣ Hablar con un asesor\n6️⃣ Salir");
+                        } else if (eleccion === 2) {
+                            await client.sendText(telefono, "¡Gracias por contactarnos! 👋");
+                            delete estadoUsuarios[telefono]; 
+                            guardarEstados();
+                        }
+                    } else if (sExtraAdmin.haberes?.esActivo && sExtraAdmin.cbu?.esActivo) { // SOCIO 2 ACTIVOS (1: Volver, 2: Asesor, 3: Salir)
+                        if (eleccion === 1) {
                             sesion.paso = "MENU_DOS_ACTIVOS";
                             guardarEstados();
-                            return client.sendText(telefono, "¿Qué detalle necesitás ver?\n1️⃣ Ver crédito CBU\n2️⃣ Ver crédito Haberes\n3️⃣ Solicitar Libre de Deuda\n4️⃣ Asesor\n5️⃣ Salir");
-                        } else { 
+                            return client.sendText(telefono, "¿Qué detalle necesitás ver?\n1️⃣ Ver crédito CBU\n2️⃣ Ver crédito Haberes\n3️⃣ Solicitar Libre de Deuda\n4️⃣ Hablar con asesor\n5️⃣ Salir");
+                        } else if (eleccion === 2) {
                             await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
                             agregarEtiquetaSegura(client, telefono, 'CONSULTA');
-                            activarModoHumano(telefono, 2);
+                            activarModoHumano(telefono, 1);
+                        } else if (eleccion === 3) {
+                            await client.sendText(telefono, "¡Gracias por contactarnos! 👋");
+                            delete estadoUsuarios[telefono]; 
+                            guardarEstados();
                         }
-                    } else if (eleccion === 2) { 
-                        await client.sendText(telefono, "¡Gracias por contactarnos! 👋");
-                        delete estadoUsuarios[telefono]; 
-                        guardarEstados();
+                    } else { // SOCIO 1 ACTIVO (1: Asesor, 2: Salir)
+                        if (eleccion === 1) {
+                            await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
+                            agregarEtiquetaSegura(client, telefono, 'CONSULTA');
+                            activarModoHumano(telefono, 1);
+                        } else if (eleccion === 2) {
+                            await client.sendText(telefono, "¡Gracias por contactarnos! 👋");
+                            delete estadoUsuarios[telefono]; 
+                            guardarEstados();
+                        }
                     }
                     break;
 

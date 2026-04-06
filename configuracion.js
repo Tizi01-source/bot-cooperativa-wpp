@@ -36,7 +36,7 @@ const menuSocioActivo = new PasoMenu (
 const pasoExtraActivo = new PasoMenu (
     "CONFIRMAR_EXTRA_ACTIVO",
     "",
-    [1, 2]
+    [1, 2, 3]
 );
 
 // Menú para socios con más de un crédito ACTIVO. 

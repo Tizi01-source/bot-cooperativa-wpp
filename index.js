@@ -315,24 +315,41 @@ function start(client) {
                 // PANEL EXTRA DESPUES DE VER A DETALLE UN CRÉDITO ACTIVO, DONDE SE LE DA LA OPCIÓN DE VER EL OTRO CRÉDITO O HABLAR CON ASESOR.
                 case "CONFIRMAR_EXTRA_ACTIVO":
                     const sExtra = sesion.datosSocio;
-                    if (eleccion === 1) { // Eligió ver opciones de pago o ver el otro crédito.
-                        if (sExtra.estado === 'REFI') { // Si el socio está en mora, lo lleva al menú de mora.
+                    
+                    if (sExtra.estado === 'REFI') { // SOCIO EN MORA (1: Volver, 2: Salir)
+                        if (eleccion === 1) {
                             sesion.paso = "MENU_INICIAL_MORA";
                             guardarEstados();
-                            return client.sendText(telefono, "¿Cómo preferís seguir?\n1️⃣ Ver opciones de pago\n2️⃣ Detalle CBU\n3️⃣ Detalle Haberes\n4️⃣ Asesor\n5️⃣ Salir");
-                        } else if (sExtra.haberes?.esActivo && sExtra.cbu?.esActivo) { // Si el socio tiene ambos créditos activos, lo regresa al menú de activos para que elija qué crédito quiere ver.
+                            return client.sendText(telefono, "¿Cómo preferís seguir?\n1️⃣ Ver opciones de pago\n2️⃣ Detalle CBU\n3️⃣ Detalle Haberes\n4️⃣ Hablar con un asesor\n5️⃣ Salir");
+                        } else if (eleccion === 2) {
+                            await client.sendText(telefono, "¡Gracias por contactarnos! 👋");
+                            delete estadoUsuarios[telefono]; 
+                            guardarEstados();
+                        }
+                    } else if (sExtra.haberes?.esActivo && sExtra.cbu?.esActivo) { // SOCIO 2 ACTIVOS (1: Volver, 2: Asesor, 3: Salir)
+                        if (eleccion === 1) {
                             sesion.paso = "MENU_DOS_ACTIVOS";
                             guardarEstados();
-                            return client.sendText(telefono, "¿Qué detalle necesitás ver?\n1️⃣ Ver datos crédito CBU\n2️⃣ Ver datos crédito Haberes\n3️⃣ Asesor\n4️⃣ Salir");
-                        } else { // Eligio hablar con asesor.
+                            return client.sendText(telefono, "¿Qué detalle necesitás ver?\n1️⃣ Ver datos crédito CBU\n2️⃣ Ver datos crédito Haberes\n3️⃣ Hablar con un asesor\n4️⃣ Salir");
+                        } else if (eleccion === 2) {
                             await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
                             agregarEtiquetaSegura(client, telefono, 'CONSULTA');
-                            activarModoHumano(telefono, 2);
+                            activarModoHumano(telefono, 1);
+                        } else if (eleccion === 3) {
+                            await client.sendText(telefono, "¡Gracias por contactarnos! 👋");
+                            delete estadoUsuarios[telefono]; 
+                            guardarEstados();
                         }
-                    } else if (eleccion === 2) { // Eligió salir.
-                        await client.sendText(telefono, "¡Gracias por consultarnos! 👋");
-                        delete estadoUsuarios[telefono]; 
-                        guardarEstados();
+                    } else { // SOCIO 1 ACTIVO (1: Asesor, 2: Salir)
+                        if (eleccion === 1) {
+                            await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
+                            agregarEtiquetaSegura(client, telefono, 'CONSULTA');
+                            activarModoHumano(telefono, 1);
+                        } else if (eleccion === 2) {
+                            await client.sendText(telefono, "¡Gracias por contactarnos! 👋");
+                            delete estadoUsuarios[telefono]; 
+                            guardarEstados();
+                        }
                     }
                     break;
 

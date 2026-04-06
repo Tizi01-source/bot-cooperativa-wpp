@@ -21,7 +21,7 @@ const menuInicialMora = new PasoMenu("MENU_INICIAL_MORA", "", [1, 2, 3, 4, 5, 6]
 const panelDeuda = new PasoMenu("PANEL_DEUDA", "Podemos ofrecerte las siguientes opciones de pago:\n\n", [1, 2, 3, 4]);
 const menuSocioActivo = new PasoMenu("MENU_SOCIO_ACTIVO", "", [1, 2, 3, 4, 5]);
 const menuDosActivos = new PasoMenu("MENU_DOS_ACTIVOS", "", [1, 2, 3, 4, 5]);
-const pasoExtraActivo = new PasoMenu("CONFIRMAR_EXTRA_ACTIVO", "", [1, 2]);
+const pasoExtraActivo = new PasoMenu("CONFIRMAR_EXTRA_ACTIVO", "", [1, 2, 3]);
 
 const menuNuevoSocio = new PasoMenu(
     "MENU_NUEVO_SOCIO",
