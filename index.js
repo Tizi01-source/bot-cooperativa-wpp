@@ -59,10 +59,10 @@ wppconnect.create({
 function start(client) {
     console.log("🤖 BOT INICIADO");
     
-    // 1. EL TRUCO INVISIBLE: Interceptamos la función del bot
+    // Funcion para desactivar el bot cuando un humano escribe.
     const sendTextOriginal = client.sendText.bind(client);
     client.sendText = async (to, content, options) => {
-        // Le pegamos un "Zero Width Joiner" (invisible) a todos los mensajes del bot
+        // Le pegamos un Zero Width Joiner a todos los mensajes del bot.
         return sendTextOriginal(to, content + '\u200D', options); 
     };
        
@@ -77,7 +77,7 @@ function start(client) {
                 return; 
             }
 
-            // Si NO lo tiene, ¡lo escribió un humano en el teclado!
+            // Si no lo tiene, lo escribió un humano.
             if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {};
             estadoUsuarios[telefono].paso = "HUMANO"; 
             guardarEstados();
@@ -141,7 +141,7 @@ function start(client) {
 
                 // PANEL DE CONFIRMACION DE DNI.
                 case "CONFIRMAR_NUMERO_DNI":
-                    if (eleccion === 1) {
+                    if (eleccion === 1) { // Si confirma que el DNI es correcto, lo buscamos en la base de datos.
                         const socio = await obtenerDatosSocio(sesion.dniTemporal);
                         if (socio) {
                             sesion.paso = "CONFIRMAR_SOCIO";
@@ -162,7 +162,7 @@ function start(client) {
 
                 // PANEL DE CONFIRMACION DE SOCIO ENCONTRADO.
                 case "CONFIRMAR_SOCIO":
-                    if (eleccion === 1) {
+                    if (eleccion === 1) { // Si confirma su identidad, lo lleva al menú principal según su estado.
                         const socio = sesion.datosSocio;
                         let msjRespuesta = `¡Perfecto ${socio.nombre}! 👋\n\n`;
                         
@@ -185,8 +185,8 @@ function start(client) {
                         } 
                         // PANEL ACTIVO.
                         else if (socio.estado === 'ACTIVO') {
-                            if (socio.haberes?.esActivo && socio.cbu?.esActivo) {
-                                sesion.paso = "MENU_DOS_ACTIVOS"; // Si tiene ambos créditos activos.
+                            if (socio.haberes?.esActivo && socio.cbu?.esActivo) { // Si tiene ambos créditos activos.
+                                sesion.paso = "MENU_DOS_ACTIVOS"; 
                                 msjRespuesta += `✅ Tenés dos créditos *ACTIVOS* con nosotros.\n\n¿Qué detalle necesitás ver?\n1️⃣ Ver datos crédito CBU\n2️⃣ Ver datos crédito Haberes\n3️⃣ Hablar con un asesor\n4️⃣ Salir`;
                             } else { // Si tiene solo uno de los dos créditos activos.
                                 sesion.paso = "MENU_SOCIO_ACTIVO";
@@ -260,7 +260,7 @@ function start(client) {
 
                 // PANEL PARA SOCIOS CON UN CRÉDITO ACTIVO.
                 case "MENU_SOCIO_ACTIVO":
-                    // Para no repetir código, identificamos cuál es el crédito activo (si solo tiene uno) y guardamos esa info en una variable.
+                    // Identificamos cuál es el crédito activo y guardamos esa info en una variable.
                     const sActivo = sesion.datosSocio;
                     const tieneSoloUno = !sActivo.tieneAmbos;
                     const credActivo = (sActivo.haberes && sActivo.haberes.esActivo) ? sActivo.haberes : sActivo.cbu;
@@ -301,7 +301,7 @@ function start(client) {
 
                 // PANEL PARA SOCIOS CON DOS CRÉDITOS ACTIVOS.
                 case "MENU_DOS_ACTIVOS":
-                    // Para no repetir código, identificamos cuál es cada crédito y guardamos esa info en variables.
+                    // Identificamos cuál es cada crédito y guardamos esa info en variables.
                     const sDos = sesion.datosSocio;
 
                     if (eleccion === 1 || eleccion === 2) { // Eligió ver detalle de alguno de los créditos.
@@ -382,7 +382,7 @@ function start(client) {
                     }
                     break;
             }
-        } catch (error) { // Atrapamos cualquier error inesperado.
+        } catch (error) { // Atrapamos cualquier error.
             console.error("Error procesando menú:", error);
             client.sendText(telefono, "⚠️ Ocurrió un error. Por favor, enviá tu DNI de nuevo para reiniciar.");
             delete estadoUsuarios[telefono];
@@ -413,7 +413,7 @@ function resetearPorInactividad(telefono) {
     }, 30 * 60 * 1000);
 }
 
-// Funcion para activar el modo humano por un tiempo determinado (en horas).
+// Funcion para activar el modo humano por un tiempo determinado en horas.
 function activarModoHumano(telefono, horas) {
     if (timers[telefono]) clearTimeout(timers[telefono]);
 
@@ -430,22 +430,22 @@ function activarModoHumano(telefono, horas) {
     }, horas * 60 * 60 * 1000);
 }
 
-// Función segura y dinámica para agregar etiquetas en WhatsApp Business
+// Función para agregar etiquetas. (Solo WhatsApp Business)
 async function agregarEtiquetaSegura(client, telefono, nombreEtiqueta) {
     try {
-        // 1. Traemos todas las etiquetas que existen en tu WhatsApp Business
+        // Traemos todas las etiquetas que existen en el WhatsApp.
         const etiquetas = await client.getAllLabels();
         
-        // 2. Buscamos si la etiqueta ya existe (ignorando mayúsculas/minúsculas)
+        // Buscamos si la etiqueta ya existe.
         let etiquetaEncontrada = etiquetas.find(e => e.name.toUpperCase() === nombreEtiqueta.toUpperCase());
         
-        // 3. Si la etiqueta no existe en tu WhatsApp, el bot la crea automáticamente
+        // Si la etiqueta no existe en tu WhatsApp, el bot la crea automáticamente
         if (!etiquetaEncontrada) {
             console.log(`[ETIQUETAS] Creando nueva etiqueta: ${nombreEtiqueta}`);
             etiquetaEncontrada = await client.addNewLabel(nombreEtiqueta);
         }
         
-        // 4. Le asignamos la etiqueta al chat usando su ID interno
+        // Le asignamos la etiqueta al chat usando su ID interno
         if (etiquetaEncontrada && etiquetaEncontrada.id) {
             await client.addOrRemoveLabels([telefono], [{ labelId: etiquetaEncontrada.id, type: 'add' }]);
             console.log(`✅ Etiqueta '${nombreEtiqueta}' agregada con éxito a ${telefono}`);

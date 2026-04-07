@@ -20,6 +20,8 @@ function cargarEstados() {
     return {}; 
 }
 
+// ARRANQUE DE WHATSAPP BOT ------------------------------------------------------------------------------------------
+
 wppconnect.create({
     session: 'sesion-admin', 
     puppeteerOptions: {
@@ -41,13 +43,14 @@ wppconnect.create({
 .then((client) => start(client)) 
 .catch((error) => console.log(error)); 
 
+
+// FUNCION PRINCIPAL DEL BOT ------------------------------------------------------------------------------------------
+
 function start(client) {
     console.log("🤖 BOT DE ADMINISTRACIÓN INICIADO");
 
-    // 1. EL TRUCO INVISIBLE: Interceptamos la función del bot
     const sendTextOriginal = client.sendText.bind(client);
     client.sendText = async (to, content, options) => {
-        // Le pegamos un "Zero Width Joiner" (invisible) a todos los mensajes del bot
         return sendTextOriginal(to, content + '\u200D', options); 
     };
     
@@ -56,12 +59,10 @@ function start(client) {
         const textoRecibido = typeof message.body === 'string' ? message.body.trim() : "";
 
         if (message.fromMe) {
-            // Si el mensaje tiene el carácter invisible, fue el bot. Ignoramos.
             if (typeof message.body === 'string' && message.body.includes('\u200D')) {
                 return; 
             }
 
-            // Si NO lo tiene, ¡lo escribió un humano en el teclado!
             if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {};
             estadoUsuarios[telefono].paso = "HUMANO"; 
             guardarEstados();
@@ -280,7 +281,7 @@ function start(client) {
                 case "CONFIRMAR_EXTRA_ACTIVO":
                     const sExtraAdmin = sesion.datosSocio;
                     
-                    if (sExtraAdmin.estado === 'REFI') { // SOCIO EN MORA (1: Volver, 2: Salir)
+                    if (sExtraAdmin.estado === 'REFI') { 
                         if (eleccion === 1) {
                             sesion.paso = "MENU_INICIAL_MORA";
                             guardarEstados();
@@ -290,7 +291,7 @@ function start(client) {
                             delete estadoUsuarios[telefono]; 
                             guardarEstados();
                         }
-                    } else if (sExtraAdmin.haberes?.esActivo && sExtraAdmin.cbu?.esActivo) { // SOCIO 2 ACTIVOS (1: Volver, 2: Asesor, 3: Salir)
+                    } else if (sExtraAdmin.haberes?.esActivo && sExtraAdmin.cbu?.esActivo) { 
                         if (eleccion === 1) {
                             sesion.paso = "MENU_DOS_ACTIVOS";
                             guardarEstados();
@@ -304,7 +305,7 @@ function start(client) {
                             delete estadoUsuarios[telefono]; 
                             guardarEstados();
                         }
-                    } else { // SOCIO 1 ACTIVO (1: Asesor, 2: Salir)
+                    } else { 
                         if (eleccion === 1) {
                             await client.sendText(telefono, "Entendido. Un asesor te atenderá a la brevedad.");
                             agregarEtiquetaSegura(client, telefono, 'CONSULTA');
@@ -377,22 +378,17 @@ function activarModoHumano(telefono, horas) {
     }, horas * 60 * 60 * 1000);
 }
 
-// Función segura y dinámica para agregar etiquetas en WhatsApp Business
 async function agregarEtiquetaSegura(client, telefono, nombreEtiqueta) {
     try {
-        // 1. Traemos todas las etiquetas que existen en tu WhatsApp Business
         const etiquetas = await client.getAllLabels();
         
-        // 2. Buscamos si la etiqueta ya existe (ignorando mayúsculas/minúsculas)
         let etiquetaEncontrada = etiquetas.find(e => e.name.toUpperCase() === nombreEtiqueta.toUpperCase());
         
-        // 3. Si la etiqueta no existe en tu WhatsApp, el bot la crea automáticamente
         if (!etiquetaEncontrada) {
             console.log(`[ETIQUETAS] Creando nueva etiqueta: ${nombreEtiqueta}`);
             etiquetaEncontrada = await client.addNewLabel(nombreEtiqueta);
         }
         
-        // 4. Le asignamos la etiqueta al chat usando su ID interno
         if (etiquetaEncontrada && etiquetaEncontrada.id) {
             await client.addOrRemoveLabels([telefono], [{ labelId: etiquetaEncontrada.id, type: 'add' }]);
             console.log(`✅ Etiqueta '${nombreEtiqueta}' agregada con éxito a ${telefono}`);
