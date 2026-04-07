@@ -41,7 +41,8 @@ wppconnect.create({
                '--no-zygote',
                '--single-process',
                '--disable-dev-shm-usage',
-               '--disable-setuid-sandbox']
+               '--disable-setuid-sandbox'],
+        protocolTimeout: 240000
     },
     //Esto te avisa si el bot está conectado o si se cayó el internet.
     statusFind: (statusSession, session) => {

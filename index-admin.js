@@ -31,7 +31,8 @@ wppconnect.create({
             '--no-zygote', 
             '--single-process', 
             '--disable-dev-shm-usage', 
-            '--disable-setuid-sandbox']
+            '--disable-setuid-sandbox'],
+        protocolTimeout: 240000
     },
     statusFind: (statusSession, session) => {
         console.log('Estado de la Sesión Admin: ', statusSession);
@@ -66,7 +67,7 @@ function start(client) {
             if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {};
             estadoUsuarios[telefono].paso = "HUMANO"; 
             guardarEstados();
-            activarModoHumano(telefono, 0.5); 
+            activarModoHumano(telefono, 2); 
             console.log(`👤 MODO HUMANO activado con: ${telefono}`);
             return; 
         }
