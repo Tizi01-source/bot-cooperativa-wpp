@@ -43,16 +43,30 @@ wppconnect.create({
 
 function start(client) {
     console.log("🤖 BOT DE ADMINISTRACIÓN INICIADO");
+
+    // 1. EL TRUCO INVISIBLE: Interceptamos la función del bot
+    const sendTextOriginal = client.sendText.bind(client);
+    client.sendText = async (to, content, options) => {
+        // Le pegamos un "Zero Width Joiner" (invisible) a todos los mensajes del bot
+        return sendTextOriginal(to, content + '\u200D', options); 
+    };
     
-    client.onMessage(async (message) => {
+    client.onAnyMessage(async (message) => {
         const telefono = message.fromMe ? message.to : message.from;   
-        const textoRecibido = (message.body || "").trim(); 
+        const textoRecibido = typeof message.body === 'string' ? message.body.trim() : "";
 
         if (message.fromMe) {
+            // Si el mensaje tiene el carácter invisible, fue el bot. Ignoramos.
+            if (typeof message.body === 'string' && message.body.includes('\u200D')) {
+                return; 
+            }
+
+            // Si NO lo tiene, ¡lo escribió un humano en el teclado!
             if (!estadoUsuarios[telefono]) estadoUsuarios[telefono] = {};
             estadoUsuarios[telefono].paso = "HUMANO"; 
             guardarEstados();
             activarModoHumano(telefono, 0.5); 
+            console.log(`👤 MODO HUMANO activado con: ${telefono}`);
             return; 
         }
         
