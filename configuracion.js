@@ -18,7 +18,7 @@ const menuInicialMora = new PasoMenu (
     [1, 2, 3, 4, 5]
 );
 
-// Simulador de cuotas
+// Simulador de cuotas.
 const panelDeuda = new PasoMenu (
     "PANEL_DEUDA",
     "Elegí un plan de pago:\n",
@@ -62,5 +62,5 @@ const motorDelBot = {
     "MENU_NUEVO_SOCIO": menuNuevoSocio
 };
 
-// No usamos conexiones automáticas pesadas porque la segmentación ocurre en el cerebro (index.js)
+// No usamos conexiones automáticas pesadas porque la segmentación ocurre en el cerebro (index.js).
 module.exports = motorDelBot;
