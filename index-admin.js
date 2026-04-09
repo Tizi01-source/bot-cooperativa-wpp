@@ -105,6 +105,27 @@ function start(client) {
             return client.sendText(telefono, `Confirmame, ¿ingresaste el DNI: *${dniLimpio}*?\n\n1️⃣ Sí, es correcto\n2️⃣ No, lo escribí mal`);
         }
         
+        if (sesion.paso === "ESPERANDO_LEGAJO") {
+            // Opción de escape por si el socio se equivocó de menú
+            if (textoRecibido.toLowerCase() === 'salir') {
+                sesion.paso = "BIENVENIDA_ADMIN";
+                guardarEstados();
+                return client.sendText(telefono, motorDelBot["BIENVENIDA_ADMIN"].mensaje);
+            }
+
+            // Verificamos si mandó imagen, documento/PDF, o un link en el texto
+            if (message.type === 'image' || message.type === 'document' || textoRecibido.includes('http')) {
+                const msjExito = "Genial! 🙌🏻\n🧑🏼‍💻Nuestro equipo de control, chequeara la solicitud si están todas las firmas correctas, de ser asi, procedemos a la transferencia! \n⏰  Recuerde: antes de las 17 hs estará acreditado en su cuenta. \nImportante:\n👀 Verifique los descuentos que ingresen mensualmente para estar al DIA \nDe esa manera podras RENOVAR por + MONTO 💰+ CUOTAS 📆 y - INTERES 📉. \n\nCualquier consulta aca estamos de 🕜 Lunes a Viernes de 10 a 16 hs.\n\nSaludos!👋🏻👋🏻";
+                
+                await client.sendText(telefono, msjExito);
+                activarModoHumano(telefono, 1); // Ahora sí, el bot se silencia y pasa al operador
+                return; 
+            } else {
+                // Si mandó puro texto sin link
+                return client.sendText(telefono, "⚠️ Por favor, adjuntá el archivo (PDF o foto) o envianos un enlace válido.\n*(Si te equivocaste de opción, escribí 'salir' para volver al inicio)*.");
+            }
+        }
+
         const menuActual = motorDelBot[sesion.paso]; 
         const eleccion = parseInt(textoRecibido); 
 
@@ -121,9 +142,10 @@ function start(client) {
                         guardarEstados();
                         return client.sendText(telefono, motorDelBot["BIENVENIDA"].mensaje);
                     } else if (eleccion === 2) { 
+                        sesion.paso = "ESPERANDO_LEGAJO";
+                        guardarEstados();
                         await client.sendText(telefono, "📁 Perfecto. Por favor, enviá tu *Legajo firmado* (en formato PDF o fotos claras) por este medio.\n\nUn operador lo descargará y procesará tu solicitud a la brevedad.");
                         agregarEtiquetaSegura(client, telefono, 'LEGAJO');
-                        activarModoHumano(telefono, 2);
                     } else if (eleccion === 3) { 
                         await client.sendText(telefono, "🤝 Entendido. Un operador de administración te atenderá a la brevedad.\n\nPor favor, dejanos tu mensaje o propuesta acá abajo:");
                         agregarEtiquetaSegura(client, telefono, 'TERCEROS');
