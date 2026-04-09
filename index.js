@@ -35,13 +35,15 @@ wppconnect.create({
 
     // Esto es para que funcione en la VM de Azure.
     puppeteerOptions: {
-        args: ['--no-sandbox',
-               '--disable-accelerated-2d-canvas',
-               '--no-first-run',
-               '--no-zygote',
-               '--single-process',
-               '--disable-dev-shm-usage',
-               '--disable-setuid-sandbox'],
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu',
+            ],
         protocolTimeout: 240000
     },
     //Esto te avisa si el bot está conectado o si se cayó el internet.

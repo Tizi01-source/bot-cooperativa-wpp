@@ -25,13 +25,15 @@ function cargarEstados() {
 wppconnect.create({
     session: 'sesion-admin', 
     puppeteerOptions: {
-        args: ['--no-sandbox', 
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage', 
             '--disable-accelerated-2d-canvas', 
             '--no-first-run', 
             '--no-zygote', 
-            '--single-process', 
-            '--disable-dev-shm-usage', 
-            '--disable-setuid-sandbox'],
+            '--disable-gpu',
+            ],
         protocolTimeout: 240000
     },
     statusFind: (statusSession, session) => {
