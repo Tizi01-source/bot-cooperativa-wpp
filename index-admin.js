@@ -38,6 +38,11 @@ wppconnect.create({
     },
     statusFind: (statusSession, session) => {
         console.log('Estado de la Sesión Admin: ', statusSession);
+        // Si el navegador crashea, forzamos el cierre para que PM2 lo reviva automáticamente
+        if (statusSession === 'browserClose' || statusSession === 'autocloseCalled') {
+            console.log('⚠️ Navegador cerrado. Forzando reinicio automático...');
+            process.exit(1); 
+        }
     },
     catchQR: (base64Qrimg, asciiQR) => {
         console.log(asciiQR); 

@@ -49,6 +49,10 @@ wppconnect.create({
     //Esto te avisa si el bot está conectado o si se cayó el internet.
     statusFind: (statusSession, session) => {
         console.log('Estado de la Sesión: ', statusSession);
+        if (statusSession === 'browserClose' || statusSession === 'autocloseCalled') {
+            console.log('⚠️ Navegador cerrado. Forzando reinicio automático...');
+            process.exit(1); 
+        }
     },
     catchQR: (base64Qrimg, asciiQR) => {
         console.log(asciiQR); // Dibuja el código QR en la terminal para escanear.
