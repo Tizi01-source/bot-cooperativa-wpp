@@ -32,6 +32,7 @@ console.log("✅ Menús disponibles:", Object.keys(motorDelBot));
 
 wppconnect.create({
     session: 'sesion-cooperativa', // Nombre de la carpeta donde se guardará la sesión (tokens). 
+    autoClose: 0,
 
     // Esto es para que funcione en la VM de Azure.
     puppeteerOptions: {

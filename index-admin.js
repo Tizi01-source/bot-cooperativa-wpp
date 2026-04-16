@@ -24,6 +24,7 @@ function cargarEstados() {
 
 wppconnect.create({
     session: 'sesion-admin', 
+    autoClose: 0,
     puppeteerOptions: {
         args: [
             '--no-sandbox', 
