@@ -14,18 +14,18 @@ async function obtenerDatosSocio(dniBuscado) {
         await doc.loadInfo();
 
         // Hoja CASHFLOW para ACTIVOS e historial de creditos.
-        const hojaCashflow = doc.sheetsByIndex[0]; // Seleccionamos la primera hoja del documento.
-        await hojaCashflow.loadHeaderRow(2); // Seleccionamos la fila 2.
-        const filasCashflow = await hojaCashflow.getRows(); // Obtenemos todas las filas de la hoja.
+        const hojaCashflow = doc.sheetsByIndex[0]; // Selecciona la primera hoja del documento.
+        await hojaCashflow.loadHeaderRow(2); // Selecciona la fila 2.
+        const filasCashflow = await hojaCashflow.getRows(); // Obtiene todas las filas de la hoja.
 
         // Hoja REFINANCIACION para deudas actualizadas.
         const hojaRefi = doc.sheetsByTitle['REFINANCIACION'] || doc.sheetsByIndex[1];
         await hojaRefi.loadHeaderRow(3);
         const filasRefi = await hojaRefi.getRows();
 
-        const dniLimpio = dniBuscado.toString().replace(/\D/g, ''); // Pasamos a limpio el dniBuscado.
+        const dniLimpio = dniBuscado.toString().replace(/\D/g, ''); // Pasa a limpio el dniBuscado.
 
-        // Buscamos filas que contengan el DNI dentro del CUIL en ambas hojas.
+        // Busca filas que contengan el DNI dentro del CUIL en ambas hojas.
         const coincidenCashflow = filasCashflow.filter(f => (f.get('CUIL') || "").toString().replace(/\D/g, '').includes(dniLimpio));
         const coincidenRefi = filasRefi.filter(f => (f.get('CUIL') || "").toString().replace(/\D/g, '').includes(dniLimpio));
 
@@ -34,20 +34,20 @@ async function obtenerDatosSocio(dniBuscado) {
             return null;
         }
 
-            const estadosMora = ['REFINANCIACION', 'REFINANCIACION V', 'SOTANO', 'MOROSO', 'ANALISIS MOV', 'INCOBRABLE', "CONHER", "DIAGRAMAS", "SOTEIN"]; // Guardamos los estados que consideramos como "Mora"
+            const estadosMora = ['REFINANCIACION', 'REFINANCIACION V', 'SOTANO', 'MOROSO', 'ANALISIS MOV', 'INCOBRABLE', "CONHER", "DIAGRAMAS", "SOTEIN"]; // Guardamos los estados que se consideran como "Mora"
             
-            // Funcion para limpiar y convertir montos a números.
+            // Funcion para limpiar y convertir montos a numeros.
             const limpiarMonto = (valor) => {
                 if (!valor) return 0;
                 let limpio = valor.toString().replace('$', '').replace(/\s/g, '').replace(/,/g, '');
                 return parseFloat(limpio) || 0;
             };
 
-            // Identificamos el tipo de crédito
+            // Identifica el tipo de credito
             const esHaberes = (m) => m.includes('HABERES') || m.includes('AMPEAL');
             const esCBU = (m) => m.includes('CBU') || m.includes('CBU C') || m.includes('SOTANO') || m.includes('SOTEIN') || m.includes('INCOBRABLE');
 
-            // Mapeo de datos de CASHFLOW, con identificación de estado y método.
+            // Mapeo de datos de CASHFLOW, con identificacion de estado y metodo.
             const mapearCashflow = (fila) => {
                 const est = (fila.get('ESTADO') || "").toString().trim().toUpperCase();
                 const met = (fila.get('METODO') || "").toString().trim().toUpperCase();
@@ -65,12 +65,12 @@ async function obtenerDatosSocio(dniBuscado) {
                 };
             };
 
-            // Mapeo de datos de REFINANCIACION, con identificación de estado y método, pero asumiendo que si está en esta hoja, está en mora (salvo que diga fallecido o anses).
+            // Mapeo de datos de REFINANCIACION, con identificacion de estado y metodo.
             const mapearRefi = (fila) => {
                 const est = (fila.get('ESTADO') || "").toString().trim().toUpperCase();
                 const met = (fila.get('METODO') || "").toString().trim().toUpperCase();
             
-                // Filtro indicado: Si está fallecido o es Anses, lo ignoramos.
+                // Si esta fallecido o es de Anses, lo ignora.
                 if (est.includes('FALLECIDO') || est.includes('ANSES')) return null;
 
                     return {
@@ -95,7 +95,7 @@ async function obtenerDatosSocio(dniBuscado) {
                 return mapearCashflow(lista[lista.length - 1]); 
             };
 
-            // Procesamos los datos encontrados.
+            // Procesa los datos encontrados.
             const registrosRefi = coincidenRefi.map(mapearRefi).filter(r => r !== null);
 
             const refiHaberes = registrosRefi.filter(r => esHaberes(r.metodo));
@@ -105,28 +105,28 @@ async function obtenerDatosSocio(dniBuscado) {
             const cashCBU = coincidenCashflow.filter(f => esCBU((f.get('METODO') || "").toString().trim().toUpperCase()));
 
             const determinarMejorEstado = (listaRefi, listaCash) => {
-                // Si debe plata en Refi, es prioridad absoluta.
+                // Si debe plata en Refi, es prioridad.
                 const refiEnDeuda = listaRefi.find(r => r.estadoOriginal !== 'CANCELADO');
                 if (refiEnDeuda) return refiEnDeuda;
 
-                // Si no tiene deuda en Refi, buscamos si sacó un crédito ACTIVO nuevo en Cashflow
+                // Si no tiene deuda en Refi, buscamos si saco un crédito ACTIVO nuevo en Cashflow
                 const cashActivo = buscarMejorCashflow(listaCash);
                 if (cashActivo && cashActivo.esActivo) return cashActivo;
 
-                // Si no hay crédito nuevo activo, pero tiene un CANCELADO en Refi, devolvemos el cancelado
+                // Si no hay credito nuevo activo, pero tiene uno CANCELADO en Refi, devolvemos el cancelado
                 const refiCancelado = listaRefi.find(r => r.estadoOriginal === 'CANCELADO');
                 if (refiCancelado) return refiCancelado;
 
-                // Sino, el último registro viejo del Cashflow
+                // Sino, el ultimo registro viejo del Cashflow
                 return cashActivo;
             };
 
-            // Si tiene una Refi, usamos los datos reales de la Refi. 
-            // Si no tiene Refi, buscamos si tiene algún crédito activo en Cashflow.
+            // Si tiene una refi, usamos los datos de la refi. 
+            // Si no tiene refi, buscamos si tiene algun credito activo en Cashflow.
             let infoHaberes = determinarMejorEstado(refiHaberes, cashHaberes);
             let infoCBU = determinarMejorEstado(refiCBU, cashCBU);
 
-            // Determinamos el estado global del socio.
+            // Determina el estado global del socio.
             let estadoGlobal = 'CANCELADO';
             if ((infoHaberes && infoHaberes.esMora) || (infoCBU && infoCBU.esMora)) {
                 estadoGlobal = 'REFI';
@@ -134,10 +134,10 @@ async function obtenerDatosSocio(dniBuscado) {
                 estadoGlobal = 'ACTIVO';
             }
 
-            // Suma la deuda si tiene deuda en ambos créditos, o toma la deuda del que tenga si solo tiene uno.
+            // Suma la deuda si tiene deuda en ambos creditos, o toma la deuda del que tenga si solo tiene uno.
             const deudaTotal = (infoHaberes?.esMora ? infoHaberes.deuda : 0) + (infoCBU?.esMora ? infoCBU.deuda : 0);
             
-            // Formateamos el nombre buscando primero en Cashflow y sino en Refi.
+            // Formatea el nombre buscando primero en Cashflow y sino en Refi.
             let nombreSocio = "Socio";
             if (coincidenCashflow.length > 0) {
                 nombreSocio = `${coincidenCashflow[0].get('NOMBRE') || ""} ${coincidenCashflow[0].get('APELLIDO') || ""}`.trim();
@@ -155,7 +155,7 @@ async function obtenerDatosSocio(dniBuscado) {
                 tieneAmbos: infoHaberes !== null && infoCBU !== null
             };
     } catch (error) {
-        console.error("Error en DB:", error);
+        console.error("Error:", error);
         return null;
     }
 }

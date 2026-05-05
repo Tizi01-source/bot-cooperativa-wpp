@@ -1,6 +1,6 @@
 const PasoMenu = require('./PasoMenu');
 
-// MENÚ INICIAL DE ADMINISTRACIÓN.
+// MENU INICIAL DE ADMINISTRACION.
 const menuBienvenidaAdmin = new PasoMenu(
     "BIENVENIDA_ADMIN",
     "¡Hola! Te comunicaste con la *Administración* de MAYCOOP. 👋\n\n¿En qué podemos ayudarte hoy?\n1️⃣ Soy socio / Quiero hacer un trámite\n2️⃣ Envío de Legajo firmado\n3️⃣ Inversores, Proveedores u otros",
@@ -16,7 +16,7 @@ const menuBienvenida = new PasoMenu(
 const pasoConfirmarNumero = new PasoMenu("CONFIRMAR_NUMERO_DNI", "", [1, 2]);
 const pasoConfirmarSocio = new PasoMenu("CONFIRMAR_SOCIO", "", [1, 2]);
 
-// MENÚS DE SOCIOS.
+// MENUS DE SOCIOS.
 const menuInicialMora = new PasoMenu("MENU_INICIAL_MORA", "", [1, 2, 3, 4, 5, 6]);
 const panelDeuda = new PasoMenu("PANEL_DEUDA", "Podemos ofrecerte las siguientes opciones de pago:\n\n", [1, 2, 3, 4]);
 const menuSocioActivo = new PasoMenu("MENU_SOCIO_ACTIVO", "", [1, 2, 3, 4, 5]);

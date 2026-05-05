@@ -39,9 +39,9 @@ wppconnect.create({
     },
     statusFind: (statusSession, session) => {
         console.log('Estado de la Sesión Admin: ', statusSession);
-        // Si el navegador crashea, forzamos el cierre para que PM2 lo reviva automáticamente
+        // Si el navegador crashea, forzamos el cierre para que PM2 lo reviva automaticamente
         if (statusSession === 'browserClose' || statusSession === 'autocloseCalled') {
-            console.log('⚠️ Navegador cerrado. Forzando reinicio automático...');
+            console.log('Navegador cerrado. Forzando reinicio automático...');
             process.exit(1); 
         }
     },
@@ -56,7 +56,7 @@ wppconnect.create({
 // FUNCION PRINCIPAL DEL BOT ------------------------------------------------------------------------------------------
 
 function start(client) {
-    console.log("🤖 BOT DE ADMINISTRACIÓN INICIADO");
+    console.log("BOT DE ADMINISTRACION INICIADO");
 
     const sendTextOriginal = client.sendText.bind(client);
     client.sendText = async (to, content, options) => {
@@ -114,7 +114,7 @@ function start(client) {
         }
         
         if (sesion.paso === "ESPERANDO_LEGAJO") {
-            // Opción de escape por si el socio se equivocó de menú
+            // Opcion de escape por si el socio se equivoco de menú
             if (textoRecibido.toLowerCase() === 'salir') {
                 sesion.paso = "BIENVENIDA_ADMIN";
                 guardarEstados();

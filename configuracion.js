@@ -11,7 +11,7 @@ const menuBienvenida = new PasoMenu (
 const pasoConfirmarNumero = new PasoMenu ( "CONFIRMAR_NUMERO_DNI", "", [1, 2] );
 const pasoConfirmarSocio = new PasoMenu ( "CONFIRMAR_SOCIO", "", [1, 2] );
 
-// Menú inicial para deudores (REFI).
+// Menu inicial para deudores (REFI).
 const menuInicialMora = new PasoMenu (
     "MENU_INICIAL_MORA",
     "",
@@ -25,24 +25,24 @@ const panelDeuda = new PasoMenu (
     [1, 2, 3, 4, 0]
 );
 
-// Menú inicial para socios (ACTIVO).
+// Menu inicial para socios (ACTIVO).
 const menuSocioActivo = new PasoMenu (
     "MENU_SOCIO_ACTIVO",
     "",
     [1, 2, 3, 4]
 );
 
-// Paso extra para después de mostrar el detalle del crédito al socio activo.
+// Paso extra para despues de mostrar el detalle del credito al socio activo.
 const pasoExtraActivo = new PasoMenu (
     "CONFIRMAR_EXTRA_ACTIVO",
     "",
     [1, 2, 3]
 );
 
-// Menú para socios con más de un crédito ACTIVO. 
+// Menu para socios con mas de un credito ACTIVO. 
 const menuDosActivos = new PasoMenu("MENU_DOS_ACTIVOS", "", [1, 2, 3, 4]);
 
-// Menú inicial para socios CANCELADOS o NUEVOS.
+// Menu inicial para socios CANCELADOS o NUEVOS.
 const menuNuevoSocio = new PasoMenu (
     "MENU_NUEVO_SOCIO",
     "¿En qué podemos ayudarte?\n\n1️⃣ Solicitar un crédito\n2️⃣ Otras consultas (asesor)\n3️⃣ Finalizar consulta",
@@ -62,5 +62,4 @@ const motorDelBot = {
     "MENU_NUEVO_SOCIO": menuNuevoSocio
 };
 
-// No usamos conexiones automáticas pesadas porque la segmentación ocurre en el cerebro (index.js).
 module.exports = motorDelBot;
